@@ -7,43 +7,68 @@
 <title>Истори-тренажер</title>
 <link rel="stylesheet" href="css/style.css">
 <link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="assets/icon.svg" type="image/svg+xml">
 </head>
 <body>
 <header class="top">
-  <div class="brand">Истори-тренажер <span class="beta">бета</span></div>
-  <div class="streak" id="streak" title="Стрик: дней подряд">🔥 0</div>
+  <button class="brand" id="brand">Истори-тренажер <span class="beta">бета</span></button>
+  <div class="stats"><span id="xp" title="Опыт">⭐ 0</span> <span id="streak" title="Дней подряд">🔥 0</span></div>
 </header>
 
 <main id="app">
-  <!-- экран выбора темы -->
-  <section id="screen-topics" class="screen">
-    <h1>Что тренируем?</h1>
-    <p class="muted">Средние века, 6 класс. Выбери параграф — поехали.</p>
-    <div id="topic-list" class="cards"></div>
+  <!-- Главный экран -->
+  <section id="screen-home" class="screen">
+    <div id="daily" class="daily hidden">
+      <div><b>Микс дня</b><div class="muted small">5 заданий из того, что подзабылось</div></div>
+      <button class="btn primary" id="daily-btn">Погнали</button>
+    </div>
+    <h1>Средние века</h1>
+    <p class="muted">Выбери урок или готовься к контрольной по главе.</p>
+    <div id="home-list"></div>
   </section>
 
-  <!-- экран вопроса -->
-  <section id="screen-quiz" class="screen hidden">
-    <div class="progress"><div id="progress-bar"></div></div>
+  <!-- Карточки перед уроком -->
+  <section id="screen-cards" class="screen hidden">
+    <h2 id="cards-title"></h2>
+    <p class="muted small">Нажми на карточку, чтобы перевернуть.</p>
+    <div class="flip" id="flip"><div class="flip-face" id="flip-front"></div></div>
+    <div class="row"><button class="btn" id="cards-prev">←</button><span id="cards-count" class="muted"></span><button class="btn" id="cards-next">→</button></div>
+    <div class="row"><button class="btn primary" id="cards-start">К заданиям</button><button class="btn" id="cards-home">Назад</button></div>
+  </section>
+
+  <!-- Урок / уровень / микс -->
+  <section id="screen-task" class="screen hidden">
+    <div class="taskbar">
+      <button class="x" id="quit" title="Выйти">✕</button>
+      <div class="progress"><div id="progress-bar"></div></div>
+      <div id="hearts" class="hearts hidden"></div>
+    </div>
     <div class="character" id="character">
       <div class="char-face" id="char-face">🙂</div>
-      <div class="char-say" id="char-say">Ну, покажи, что умеешь.</div>
+      <div class="char-say" id="char-say"></div>
     </div>
-    <h2 id="question"></h2>
-    <div id="options" class="options"></div>
+    <div id="task"></div>
     <div id="feedback" class="feedback hidden">
       <p id="feedback-text"></p>
-      <button id="next-btn" class="btn primary">Дальше</button>
+      <p id="assoc" class="assoc hidden"></p>
+      <div class="row">
+        <button id="more-btn" class="btn small hidden">🔍 хочу все знать</button>
+        <button id="next-btn" class="btn primary">Дальше</button>
+      </div>
+      <p id="more-text" class="more hidden"></p>
     </div>
+    <div class="row"><button id="check-btn" class="btn primary hidden">Проверить</button></div>
   </section>
 
-  <!-- экран итогов -->
+  <!-- Итоги -->
   <section id="screen-result" class="screen hidden">
+    <div class="char-face big" id="result-face">🎉</div>
     <h1 id="result-title"></h1>
     <p id="result-text" class="muted"></p>
+    <p id="result-xp" class="xpgain"></p>
     <div class="row">
       <button id="again-btn" class="btn primary">Еще раз</button>
-      <button id="home-btn" class="btn">К темам</button>
+      <button id="home-btn" class="btn">На главную</button>
     </div>
   </section>
 </main>
