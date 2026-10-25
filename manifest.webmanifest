@@ -1,0 +1,10 @@
+{
+  "name": "Истори-тренажер",
+  "short_name": "История",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#fbfbf8",
+  "theme_color": "#fbfbf8",
+  "lang": "ru",
+  "icons": []
+}

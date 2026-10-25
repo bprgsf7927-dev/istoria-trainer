@@ -1,0 +1,45 @@
+/* Минималистичный белый. Персонажи и стиль — этап 1.5, когда Даня выберет команду. */
+:root {
+  --bg: #fbfbf8;
+  --ink: #1e2235;
+  --muted: #6a7179;
+  --line: #e3e6e4;
+  --accent: #1f3fbf;
+  --ok: #2f9e5b;
+  --bad: #d9480f;
+  --card: #ffffff;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--bg); color: var(--ink); font: 17px/1.45 -apple-system, "Segoe UI", Roboto, Arial, sans-serif; }
+.top, .bottom { display: flex; justify-content: space-between; align-items: center; padding: 14px 18px; max-width: 720px; margin: 0 auto; }
+.brand { font-weight: 700; }
+.beta { font-size: 12px; color: var(--muted); border: 1px solid var(--line); border-radius: 999px; padding: 1px 8px; margin-left: 6px; vertical-align: middle; }
+.streak { font-weight: 600; }
+main { max-width: 720px; margin: 0 auto; padding: 8px 18px 40px; }
+h1 { font-size: 28px; margin: 12px 0 4px; }
+h2 { font-size: 22px; margin: 16px 0; line-height: 1.3; }
+.muted { color: var(--muted); }
+.hidden { display: none !important; }
+.cards { display: grid; gap: 12px; margin-top: 16px; }
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 16px; text-align: left; cursor: pointer; width: 100%; font: inherit; color: inherit; }
+.card:active { transform: scale(0.99); }
+.card .para { color: var(--accent); font-weight: 700; font-size: 14px; }
+.card .count { color: var(--muted); font-size: 14px; }
+.card .done { color: var(--ok); font-size: 14px; }
+.progress { height: 6px; background: var(--line); border-radius: 999px; overflow: hidden; margin: 8px 0 16px; }
+#progress-bar { height: 100%; width: 0; background: var(--accent); transition: width .3s; }
+.character { display: flex; gap: 12px; align-items: flex-start; background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 12px; }
+.char-face { font-size: 36px; line-height: 1; }
+.char-say { font-size: 15px; color: var(--muted); }
+.options { display: grid; gap: 10px; }
+.opt { background: var(--card); border: 2px solid var(--line); border-radius: 14px; padding: 14px 16px; text-align: left; font: inherit; color: inherit; cursor: pointer; }
+.opt.correct { border-color: var(--ok); background: #eef9f1; }
+.opt.wrong { border-color: var(--bad); background: #fdf1ea; }
+.opt:disabled { cursor: default; }
+.feedback { margin-top: 16px; padding: 14px 16px; border-radius: 14px; background: var(--card); border: 1px solid var(--line); }
+.feedback.ok { border-color: var(--ok); }
+.feedback.bad { border-color: var(--bad); }
+.btn { font: inherit; font-weight: 600; border: 1px solid var(--line); background: var(--card); color: var(--ink); border-radius: 12px; padding: 12px 18px; cursor: pointer; }
+.btn.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+.row { display: flex; gap: 10px; margin-top: 16px; }
+.bottom { font-size: 13px; justify-content: center; }
