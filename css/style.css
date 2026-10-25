@@ -59,9 +59,9 @@ h2.chapter { font-size: 18px; color: var(--muted); margin: 28px 0 8px; }
 .statement { font-size: 20px; background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 16px; }
 
 /* пары */
-.pairs { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-.col { display: grid; gap: 10px; align-content: start; }
-.pair { background: var(--card); border: 2px solid var(--line); border-radius: 14px; padding: 12px; text-align: left; font-size: 15px; cursor: pointer; min-height: 56px; }
+.pairs { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; align-items: stretch; }
+.pair { background: var(--card); border: 2px solid var(--line); border-radius: 14px; padding: 12px; text-align: left; font-size: 15px; cursor: pointer; min-height: 56px; height: 100%; }
+.pair.reveal { border-style: dashed; opacity: .7; }
 .pair.sel { border-color: var(--accent); background: var(--accent-soft); }
 .pair.matched { border-color: var(--ok); background: var(--ok-soft); opacity: .6; }
 .pair.shake { animation: shake .3s; border-color: var(--bad); }

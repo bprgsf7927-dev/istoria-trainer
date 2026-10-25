@@ -182,25 +182,40 @@ function choice(q, opts, answer, fact, answerText) {
   };
 }
 
+const PAIR_LIMIT = 5;
 function tPairs(facts) {
-  const set = pick(facts, Math.min(4, facts.length));
+  return pairsTask(pick(facts, Math.min(4, facts.length)).map(f => ({ id: f.id, l: f.date, r: f.event })), 'Соедини даты и события');
+}
+function tPairsTerms(terms) {
+  return pairsTask(pick(terms, 4).map(t => ({ id: t.id, l: t.term, r: t.definition })), 'Соедини термины и значения');
+}
+function tPairsPersons(persons) {
+  return pairsTask(pick(persons, 4).map(p => ({ id: p.id, l: p.name, r: p.who })), 'Кто есть кто: соедини');
+}
+function pairsTask(set, title) {
   let left = null, mistakes = 0, done = 0;
   return {
-    kind: 'pairs', answerText: set.map(f => `${f.date} — ${f.event}`).join('; '),
+    kind: 'pairs', answerText: set.map(x => `${x.l} — ${x.r}`).join('; '), quiet: true,
     render(el) {
-      el.innerHTML = `<h2>Соедини пары</h2><div class="pairs">
-        <div class="col">${shuffle(set).map(f => `<button class="pair" data-id="${f.id}" data-side="l">${esc(f.date)}</button>`).join('')}</div>
-        <div class="col">${shuffle(set).map(f => `<button class="pair" data-id="${f.id}" data-side="r">${esc(f.event)}</button>`).join('')}</div></div>`;
-      el.querySelectorAll('.pair').forEach(b => b.onclick = () => {
-        if (b.classList.contains('matched')) return;
-        if (!left || left.dataset.side === b.dataset.side) { el.querySelectorAll('.pair').forEach(x => x.classList.remove('sel')); left = b; b.classList.add('sel'); return; }
+      // одна сетка: левая и правая колонки идут строками, строки одной высоты
+      const L = shuffle(set), R = shuffle(set);
+      el.innerHTML = `<h2>${esc(title)}</h2><p class="small muted">Ошибок можно сделать: ${PAIR_LIMIT}</p><div class="pairs">${
+        L.map((x, i) => `<button class="pair" data-id="${x.id}" data-side="l">${esc(x.l)}</button><button class="pair" data-id="${R[i].id}" data-side="r">${esc(R[i].r)}</button>`).join('')}</div>`;
+      const all = () => el.querySelectorAll('.pair');
+      all().forEach(b => b.onclick = () => {
+        if (b.classList.contains('matched') || b.disabled) return;
+        if (!left || left.dataset.side === b.dataset.side) { all().forEach(x => x.classList.remove('sel')); left = b; b.classList.add('sel'); return; }
         if (left.dataset.id === b.dataset.id) {
           [left, b].forEach(x => { x.classList.remove('sel'); x.classList.add('matched'); });
           if (++done === set.length) finishTask(mistakes === 0, mistakes <= 1);
         } else {
           mistakes++;
           [left, b].forEach(x => x.classList.add('shake'));
-          setTimeout(() => el.querySelectorAll('.pair').forEach(x => x.classList.remove('shake', 'sel')), 400);
+          setTimeout(() => all().forEach(x => x.classList.remove('shake', 'sel')), 400);
+          if (mistakes >= PAIR_LIMIT) { // провал задания: показываем пары и идем дальше
+            all().forEach(x => { x.disabled = true; x.classList.remove('sel'); if (!x.classList.contains('matched')) x.classList.add('reveal'); });
+            finishTask(false);
+          }
         }
         left = null;
       });
@@ -312,7 +327,10 @@ function buildLesson(lesson) {
   const tasks = [];
   const usedTf = new Set(), usedCloze = new Set();
   for (const kind of plan) {
-    if (kind === 'pairs' && facts.length >= 3) tasks.push(tPairs(facts.length >= 4 ? facts : topicFacts));
+    if (kind === 'pairs' && tasks.some(t => t.kind === 'pairs') && (terms.length >= 4 || persons.length >= 4)) {
+      tasks.push(terms.length >= 4 && (persons.length < 4 || Math.random() < 0.5) ? tPairsTerms(terms) : tPairsPersons(persons));
+    }
+    else if (kind === 'pairs' && facts.length >= 3) tasks.push(tPairs(facts.length >= 4 ? facts : topicFacts));
     else if (kind === 'order' && yearFacts(topicFacts).length >= 4) tasks.push(tOrder(yearFacts(facts).length >= 4 ? facts : topicFacts));
     else if (kind === 'cloze' && cloze.some(c => !usedCloze.has(c.id))) { const c = pick(cloze.filter(c => !usedCloze.has(c.id)), 1)[0]; usedCloze.add(c.id); tasks.push(tCloze(c)); }
     else if (kind === 'tf' && tf.some(s => !usedTf.has(s.id))) { const s = pick(tf.filter(s => !usedTf.has(s.id)), 1)[0]; usedTf.add(s.id); tasks.push(tTrueFalse(s)); }
@@ -337,7 +355,8 @@ function buildExam(chapter, level) {
   const tasks = [];
   if (level === 1) {
     const tfs = pick(tf, 5);
-    for (let i = 0; i < 10; i++) tasks.push(i % 2 === 0 ? tPairs(pick(facts, 6)) : tTrueFalse(tfs[(i - 1) / 2]));
+    const kinds = [() => tPairs(pick(facts, 6)), () => tPairsTerms(terms), () => tPairs(pick(facts, 6)), () => tPairsPersons(persons), () => tPairs(pick(facts, 6))];
+    for (let i = 0; i < 10; i++) tasks.push(i % 2 === 0 ? kinds[i / 2]() : tTrueFalse(tfs[(i - 1) / 2]));
   } else if (level === 2) {
     const cl = pick(cloze, 3), cs = pick(causes, 2);
     const plan = ['order', 'cloze', 'choice', 'cause', 'order', 'cloze', 'choice', 'cause', 'cloze', 'choice'];
@@ -403,12 +422,16 @@ function finishTask(ok, half = false) {
   if (ok) {
     run.score++; run.xp += XP_PER_TASK;
     speak('optimist');
-    $('feedback-text').textContent = `${t.answerText}.${hook}`;
+    $('feedback-text').innerHTML = t.quiet ? '<b>Ты прав.</b> Все пары на месте.' : `<b>Ты прав.</b> ${esc(t.answerText)}.${esc(hook)}`;
     if (t.fact) state.wrong = state.wrong.filter(id => id !== t.fact.id);
   } else {
-    if (half) { run.score += 0.5; run.xp += XP_PER_TASK / 2; speak('nerd', 'Почти. Ошибка на один год — засчитываю половину.'); }
-    else speak('panic');
-    $('feedback-text').textContent = `Правильно: ${t.answerText}.`;
+    if (half) {
+      run.score += 0.5; run.xp += XP_PER_TASK / 2; speak('nerd', 'Одна промашка — засчитываю половину.');
+      $('feedback-text').innerHTML = t.quiet ? '<b>Почти.</b> Собрал, но с одной ошибкой.' : `<b>Почти.</b> Правильно: ${esc(t.answerText)}.`;
+    } else {
+      speak('panic');
+      $('feedback-text').innerHTML = `<b>Ты не прав.</b> Правильно: ${esc(t.answerText)}.`;
+    }
     if (t.fact) {
       if (t.fact.assoc) { $('assoc').textContent = `💡 ${t.fact.assoc}`; $('assoc').classList.remove('hidden'); }
       if (!state.wrong.includes(t.fact.id)) state.wrong.push(t.fact.id);
