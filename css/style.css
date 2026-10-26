@@ -219,3 +219,12 @@ body { background-image: repeating-linear-gradient(0deg, transparent 0 27px, #e9
 .picker-item.boss .picker-para { color: #d9480f; }
 
 .picker-foot { font-family: Caveat, cursive; font-size: 22px; line-height: 1.2; text-align: center; color: var(--ink); margin: 6px 12px 20px; transform: rotate(-1deg); }
+
+.daily.off { opacity: .55; }
+.daily.off .btn { background: #d7d9d6; border-color: #d7d9d6; color: #8a8f8c; }
+.stats span, .hearts-home { cursor: pointer; }
+.info { width: 20px; height: 20px; border-radius: 50%; border: 2px solid var(--ink); background: none; font: 700 12px/1 inherit; cursor: pointer; vertical-align: middle; padding: 0; }
+.hint { position: fixed; inset: 0; background: rgba(30,34,53,.35); display: flex; align-items: center; justify-content: center; z-index: 50; padding: 24px; }
+.hint-box { background: var(--card); border: 3px solid #1e2235; border-radius: 255px 18px 225px 18px / 18px 225px 18px 255px; padding: 18px 20px; max-width: 360px; transform: rotate(-1deg); }
+.hint-box b { font-family: Caveat, cursive; font-size: 28px; }
+.hint-box p { margin: 6px 0 8px; }

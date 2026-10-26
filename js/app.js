@@ -147,7 +147,10 @@ function renderHome() {
   const tid = currentTopic();
   const t = D.topicById[tid], ch = chapterOf(tid);
   const dailyPool = dailyFacts();
-  $('daily').classList.toggle('hidden', dailyPool.length < 3);
+  const ready = dailyPool.length >= 3;
+  $('daily').classList.toggle('off', !ready);
+  $('daily-sub').textContent = ready ? '5 заданий из подзабытого' : 'появится после первого шага';
+  $('daily-btn').disabled = !ready;
   $('topic-pill-para').textContent = `Глава ${ch.id} · ${t.paragraph}`;
   $('topic-pill-title').textContent = t.title;
   $('hearts-home').textContent = '❤️'.repeat(state.hearts) + '🖤'.repeat(Math.max(0, 3 - state.hearts));
@@ -679,6 +682,18 @@ $('again-btn').onclick = () => run.kind === 'step' ? runStep(run.meta.tid, run.m
 $('home-btn').onclick = () => { if (run && run.kind === 'boss') return renderBoss(run.meta.chapter.id); renderHome(); show('screen-home'); };
 $('brand').onclick = () => { if (!$('screen-task').classList.contains('hidden')) return $('quit').onclick(); if (!$('screen-home').classList.contains('hidden')) { renderWelcome(); show('screen-welcome'); } else { renderHome(); show('screen-home'); } };
 $('daily-btn').onclick = startDaily;
+// подсказки по значкам
+const HINTS = {
+  xp: ['⭐ Звезды', 'Опыт. 10 за каждое верное задание, 5 за «почти». Просто растут — это приятно.'],
+  streak: ['🔥 Огонек', 'Дней подряд, когда ты заходил и проходил хотя бы один шаг. Пропустил день — сгорает.'],
+  hearts: ['❤️ Сердца', 'Жизни на третьем уровне босса. Дает сундук: пройди тест по прошлому параграфу на 70%. Максимум три, после босса сгорают.'],
+  daily: ['Микс дня', '5 заданий из того, в чем ты ошибался, и того, что давно не повторял. Собирается заново каждый день.'],
+};
+function showHint(k) { const [t, body] = HINTS[k]; $('hint-title').textContent = t; $('hint-text').textContent = body; $('hint').classList.remove('hidden'); }
+$('xp').onclick = () => showHint('xp'); $('streak').onclick = () => showHint('streak');
+document.querySelector('.hearts-home').onclick = () => showHint('hearts');
+$('daily-info').onclick = (e) => { e.stopPropagation(); showHint('daily'); };
+$('hint').onclick = () => $('hint').classList.add('hidden');
 
 const DECOR = [
   '<path d="M6 30q10-26 24-4q8-22 20 0q10-18 18 2" />',                                         // облачко
