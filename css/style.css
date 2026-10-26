@@ -176,3 +176,20 @@ h2.chapter { font-size: 18px; color: var(--muted); margin: 28px 0 8px; }
 .trail { z-index: 0; }
 /* тетрадная линейка на фоне */
 body { background-image: repeating-linear-gradient(0deg, transparent 0 27px, #e9ecf5 27px 28px); background-attachment: fixed; }
+
+/* дверь к боссу на карте */
+.boss-door { display: flex; align-items: center; gap: 14px; width: 100%; margin-top: 16px; background: var(--card); border: 3px solid #1e2235; border-radius: 255px 18px 225px 18px / 18px 225px 18px 255px; padding: 10px 16px; text-align: left; cursor: pointer; transform: rotate(.5deg); }
+.boss-door .house { width: 88px; height: 66px; flex: none; }
+.boss-door.locked { border-color: #b9bcb8; color: var(--muted); cursor: default; }
+.boss-door.locked .house { stroke: #b9bcb8; opacity: .7; }
+.boss-door.won { border-color: var(--ok); }
+.boss-door-cap { display: flex; flex-direction: column; gap: 2px; }
+/* экран босса */
+#screen-boss { text-align: center; }
+.boss-head { margin: 8px 0 16px; }
+.boss-house { display: flex; justify-content: center; }
+.boss-house .house { width: 200px; height: 150px; }
+#screen-boss .levels { text-align: left; }
+#screen-boss .level.done { border-color: var(--ok); background: var(--ok-soft); }
+#screen-boss .hearts-home { display: inline-flex; margin: 6px auto; }
+.badge { color: var(--ok); font-weight: 700; }

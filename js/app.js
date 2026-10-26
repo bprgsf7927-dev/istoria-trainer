@@ -186,23 +186,15 @@ function renderHome() {
     box.appendChild(row);
   });
 
-  // босс главы — после последнего параграфа главы
+  // дверь к боссу главы — после последнего параграфа главы
   if (isLastInChapter(tid)) {
-    const row = document.createElement('div'); row.className = 'node-row c boss-row';
     const open = ch.topics.every(topicDone);
-    const b = document.createElement('button');
     const won = (state.bosses[ch.id] || {}).won;
-    b.className = 'node boss' + (open ? '' : ' locked') + (won ? ' done' : '');
-    b.disabled = !open;
-    const bcol = !open ? '#9aa0a6' : won ? '#3FA66A' : '#D9480F';
-    b.innerHTML = `${wobble(bcol, open ? '#ffffff' : '#f0f0ec', 46)}<span class="node-icon">${dood(!open ? 'lock' : won ? 'trophy' : 'boss', bcol)}</span>`;
-    const path = document.createElement('div'); path.className = 'trail'; path.innerHTML = trailSVG('r', 'c'); row.appendChild(path);
-    b.onclick = () => startBoss(ch.id);
-    row.appendChild(b);
-    const cap = document.createElement('div'); cap.className = 'node-cap';
-    cap.innerHTML = `Босс главы ${ch.id}${open ? '' : '<br><span class="small muted">пройди все параграфы главы</span>'}`;
-    row.appendChild(cap);
-    box.appendChild(row);
+    const door = document.createElement('button');
+    door.className = 'boss-door' + (open ? '' : ' locked') + (won ? ' won' : '');
+    door.innerHTML = `${BOSS_HOUSE[ch.id] || BOSS_HOUSE.VI}<div class="boss-door-cap"><b>${won ? 'Босс главы ' + ch.id + ' повержен' : 'Босс главы ' + ch.id}</b><span class="small muted">${open ? 'три уровня, жизни на третьем' : 'пройди все параграфы главы'}</span></div>`;
+    door.onclick = () => { if (open) renderBoss(ch.id); };
+    box.appendChild(door);
   }
   // переход дальше
   const nt = nextTopic(tid);
@@ -229,6 +221,41 @@ function renderTopicPicker() {
 }
 $('topic-pill').onclick = () => { renderTopicPicker(); $('picker').classList.toggle('hidden'); };
 $('picker-close').onclick = () => $('picker').classList.add('hidden');
+
+// ---------- экран босса главы: три уровня ----------
+const BOSS_HOUSE = {
+  // юрта, криво: дрожащий купол, войлочные полосы, дымок
+  V:  '<svg class="house" viewBox="0 0 120 100" fill="none" stroke="#1e2235" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 80q6-30 24-44q12-10 26-11q16 1 26 12q14 14 22 42l-4 3q-46 4-92 1z"/><path d="M22 60q38-10 78 2M16 72q44-8 90 1"/><path d="M48 82v-20q12-9 24 1v20"/><path d="M60 24q-2-6 1-10q4 3 1 10M62 14q-6-8 2-12q6 6 2 11"/><path d="M68 10q6-6 2-12M72 4q8-4 4-10"/><path d="M30 46q3-2 6 1M84 44q3-2 6 2"/></svg>',
+  // замок, криво: зубцы разной высоты, флаг, окошки
+  VI: '<svg class="house" viewBox="0 0 120 100" fill="none" stroke="#1e2235" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><path d="M16 88V38l10 2-1-11 12-1v10l12 1-1-14 11-2 1 15 12 1-1-10 12-1 1 12 11-2-1 50z"/><path d="M48 88V62q12-12 25 1v25"/><path d="M28 54l9 1-1 9-8-1zM84 52l9 1-1 10-9-1z"/><path d="M61 25l-1-20 16 5-15 5"/><path d="M22 76q8-2 14 1M86 74q8-3 14 1"/></svg>',
+};
+const BOSS_LEVELS = [
+  { id: 1, title: 'Разминка', sub: 'пары и правда-ложь · 10', n: 10 },
+  { id: 2, title: 'Как учитель спросит', sub: 'порядок, вставка, причины · 10', n: 10 },
+  { id: 3, title: 'Босс', sub: 'даты с клавиатуры · 8 · жизни', n: 8 },
+];
+function bossState(chId) { return state.bosses[chId] || {}; }
+function renderBoss(chId) {
+  const ch = D.topics.chapters.find(c => c.id === chId), bs = bossState(chId);
+  $('boss-house').innerHTML = BOSS_HOUSE[chId] || BOSS_HOUSE.VI;
+  $('boss-title').textContent = `Босс главы ${ch.id}`;
+  $('boss-sub').textContent = ch.title;
+  $('boss-hearts').textContent = '❤️'.repeat(state.hearts) + '🖤'.repeat(Math.max(0, 3 - state.hearts));
+  const list = $('boss-levels'); list.innerHTML = '';
+  BOSS_LEVELS.forEach((lv, i) => {
+    const best = bs['l' + lv.id] || 0;
+    const open = i === 0 || (bs['l' + BOSS_LEVELS[i - 1].id] || 0) >= 70;
+    const b = document.createElement('button');
+    b.className = 'level' + (open ? '' : ' locked') + (best >= 70 ? ' done' : '');
+    b.disabled = !open;
+    b.innerHTML = `<b>${lv.id}. ${lv.title}</b><span>${lv.sub}</span><em>${!open ? '🔒 70% выше' : best ? best + '%' : ''}</em>`;
+    b.onclick = () => startBoss(chId, lv.id);
+    list.appendChild(b);
+  });
+  $('boss-badge').classList.toggle('hidden', !bs.won);
+  show('screen-boss');
+}
+$('boss-back').onclick = () => { renderHome(); show('screen-home'); };
 
 // ---------- карточки перед уроком ----------
 let cards = null;
@@ -476,9 +503,29 @@ function buildTopicExam(tid) {
   const p = topicPool(tid);
   return buildTasksFrom(p, ['order', 'cloze', 'choice', 'pairsx', 'type', 'choice', 'tf', 'cloze']);
 }
-function buildBoss(ch) {
-  const yf = yearFacts(byTopics(D.facts, ch.topics));
-  return pick(yf, 8).map(tType);
+function buildBoss(ch, level) {
+  const topics = ch.topics;
+  const facts = byTopics(D.facts, topics), yf = yearFacts(facts);
+  const tf = byTopics(D.truefalse, topics), cloze = byTopics(D.cloze, topics), terms = byTopics(D.terms, topics), persons = byTopics(D.persons, topics), causes = byTopics(D.causes, topics);
+  const tasks = [];
+  if (level === 1) {
+    const tfs = pick(tf, 5);
+    const kinds = [() => tPairs(pick(facts, 6)), () => tPairsTerms(terms), () => tPairs(pick(facts, 6)), () => tPairsPersons(persons), () => tPairs(pick(facts, 6))];
+    for (let i = 0; i < 10; i++) tasks.push(i % 2 === 0 ? kinds[i / 2]() : tTrueFalse(tfs[(i - 1) / 2]));
+  } else if (level === 2) {
+    const cl = pick(cloze, 3), cs = pick(causes, 3);
+    const plan = ['order', 'cloze', 'choice', 'cause', 'order', 'cloze', 'choice', 'cause', 'cloze', 'cause'];
+    let ci = 0, ca = 0;
+    for (const k of plan) {
+      if (k === 'order') tasks.push(tOrder(pick(yf, 7)));
+      else if (k === 'cloze') tasks.push(tCloze(cl[ci++ % cl.length]));
+      else if (k === 'cause') tasks.push(tCause(cs[ca++ % cs.length]));
+      else { const r = Math.random(); tasks.push(r < 0.4 ? tChoiceDate(pick(facts, 1)[0], facts) : r < 0.7 ? tChoiceTerm(pick(terms, 1)[0], D.terms) : tChoicePerson(pick(persons, 1)[0], D.persons)); }
+    }
+  } else {
+    for (const f of pick(yf, 8)) tasks.push(tType(f));
+  }
+  return tasks;
 }
 
 function dailyFacts() {
@@ -496,7 +543,7 @@ function buildDaily() {
 // ---------- прогон раунда ----------
 let run = null;
 function startRun(kind, tasks, meta) {
-  run = { kind, tasks, i: 0, score: 0, hearts: kind === 'boss' ? Math.max(1, state.hearts) : null, meta, xp: 0 };
+  run = { kind, tasks, i: 0, score: 0, hearts: kind === 'boss' && meta.level === 3 ? Math.max(1, state.hearts) : null, meta, xp: 0 };
   touchStreak(); renderStats();
   $('hearts').classList.toggle('hidden', run.hearts === null);
   speak('neutral', meta.intro || '');
@@ -511,9 +558,10 @@ function startChest(tid) {
   startRun('chest', buildChest(tid), { tid, idx: STEP_PLAN.indexOf('chest'), intro: `Сундук: вспоминаем ${D.topicById[pt].paragraph}. За 70% — сердце на босса.` });
 }
 function startTopicExam(tid) { startRun('exam', buildTopicExam(tid), { tid, idx: STEP_PLAN.indexOf('exam'), intro: `Контрольная по ${D.topicById[tid].paragraph}. Как учитель спросит.` }); }
-function startBoss(chId) {
+function startBoss(chId, level) {
   const ch = D.topics.chapters.find(c => c.id === chId);
-  startRun('boss', buildBoss(ch), { chapter: ch, intro: `Босс главы ${ch.id}. Даты с клавиатуры, жизней: ${Math.max(1, state.hearts)}.` });
+  const intro = level === 3 ? `Босс. Даты с клавиатуры, жизней: ${Math.max(1, state.hearts)}.` : `Глава ${ch.id}, уровень ${level}: ${BOSS_LEVELS[level - 1].title}.`;
+  startRun('boss', buildBoss(ch, level), { chapter: ch, level, intro });
 }
 function startDaily() { startRun('daily', buildDaily(), { intro: 'Микс дня: то, что подзабылось.' }); }
 
@@ -583,14 +631,16 @@ function finishRun(lost) {
     text = run.kind === 'chest' && passed ? `+1 сердце на босса (всего ${state.hearts})` : `${D.topicById[tid].paragraph} · ${D.topicById[tid].title}`;
     face = pct === 100 ? 'opti' : passed ? 'opti' : 'dushka';
   } else if (run.kind === 'boss') {
-    const ch = run.meta.chapter.id;
+    const ch = run.meta.chapter.id, lv = run.meta.level, bs = state.bosses[ch] || {};
     if (lost) { title = 'Жизни кончились.'; text = `Босс устоял. Прошел ${run.i} из ${n}. Сердца копятся в сундуках.`; face = 'nik'; }
     else {
-      state.bosses[ch] = { won: passed || (state.bosses[ch] || {}).won, best: Math.max(pct, (state.bosses[ch] || {}).best || 0) };
-      title = passed ? `Босс главы ${ch} повержен. 🏅` : `${pct}%. Босс устоял, нужно 70.`;
+      bs['l' + lv] = Math.max(bs['l' + lv] || 0, pct);
+      if (lv === 3 && passed) bs.won = true;
+      title = passed ? (lv === 3 ? `Босс главы ${ch} повержен. 🏅` : `Уровень ${lv} пройден: ${pct}%`) : `${pct}%. Нужно 70, чтобы открыть следующий.`;
       text = run.meta.chapter.title; face = passed ? 'opti' : 'nik';
     }
-    state.hearts = 0;
+    state.bosses[ch] = bs;
+    if (lv === 3) state.hearts = 0;
   } else {
     title = `${s} из ${n}`; text = 'Микс дня закрыт. Завтра будет новый.'; face = s === n ? 'opti' : 'dushka';
   }
@@ -606,8 +656,8 @@ function finishRun(lost) {
 $('next-btn').onclick = next;
 $('check-btn').onclick = () => {};
 $('quit').onclick = () => { if (confirm('Выйти? Прогресс этого раунда не сохранится.')) { renderHome(); show('screen-home'); } };
-$('again-btn').onclick = () => run.kind === 'step' ? runStep(run.meta.tid, run.meta.idx) : run.kind === 'chest' ? startChest(run.meta.tid) : run.kind === 'exam' ? startTopicExam(run.meta.tid) : run.kind === 'boss' ? startBoss(run.meta.chapter.id) : startDaily();
-$('home-btn').onclick = () => { renderHome(); show('screen-home'); };
+$('again-btn').onclick = () => run.kind === 'step' ? runStep(run.meta.tid, run.meta.idx) : run.kind === 'chest' ? startChest(run.meta.tid) : run.kind === 'exam' ? startTopicExam(run.meta.tid) : run.kind === 'boss' ? startBoss(run.meta.chapter.id, run.meta.level) : startDaily();
+$('home-btn').onclick = () => { if (run && run.kind === 'boss') return renderBoss(run.meta.chapter.id); renderHome(); show('screen-home'); };
 $('brand').onclick = () => { if (!$('screen-task').classList.contains('hidden')) return $('quit').onclick(); if (!$('screen-home').classList.contains('hidden')) { renderWelcome(); show('screen-welcome'); } else { renderHome(); show('screen-home'); } };
 $('daily-btn').onclick = startDaily;
 
