@@ -208,3 +208,10 @@ body { background-image: repeating-linear-gradient(0deg, transparent 0 27px, #e9
 #screen-boss .level.done { border-color: var(--ok); background: var(--ok-soft); }
 #screen-boss .hearts-home { display: inline-flex; margin: 6px auto; }
 .badge { color: var(--ok); font-weight: 700; }
+
+.picker-item.boss { background: #fff4e5; border-color: #1e2235; border-width: 3px; }
+.picker-item.boss .picker-char .house { width: 54px; height: 44px; }
+.picker-item.boss.locked { background: #f0f0ec; color: var(--muted); }
+.picker-item.boss.locked .house { stroke: #b9bcb8; }
+.picker-item.boss.done { background: var(--ok-soft); border-color: var(--ok); }
+.picker-item.boss .picker-para { color: #d9480f; }

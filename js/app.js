@@ -186,22 +186,15 @@ function renderHome() {
     box.appendChild(row);
   });
 
-  // дверь к боссу главы — после последнего параграфа главы
-  if (isLastInChapter(tid)) {
-    const open = ch.topics.every(topicDone);
-    const won = (state.bosses[ch.id] || {}).won;
-    const door = document.createElement('button');
-    door.className = 'boss-door' + (open ? '' : ' locked') + (won ? ' won' : '');
-    door.innerHTML = `${BOSS_HOUSE[ch.id] || BOSS_HOUSE.VI}<div class="boss-door-cap"><b>${won ? 'Босс главы ' + ch.id + ' повержен' : 'Босс главы ' + ch.id}</b><span class="small muted">${open ? 'три уровня, жизни на третьем' : 'пройди все параграфы главы'}</span></div>`;
-    door.onclick = () => { if (open) renderBoss(ch.id); };
-    box.appendChild(door);
-  }
   // переход дальше
   const nt = nextTopic(tid);
   const foot = document.createElement('div'); foot.className = 'map-foot';
-  foot.innerHTML = nt ? `<button class="btn ${topicDone(tid) ? 'primary' : ''}" id="next-topic">Дальше: ${esc(D.topicById[nt].paragraph)} ${esc(D.topicById[nt].title)} →</button>` : '<p class="muted small">Это последний параграф курса.</p>';
+  const lastInCh = isLastInChapter(tid), chOpen = ch.topics.every(topicDone);
+  if (lastInCh) foot.innerHTML = `<button class="btn ${chOpen ? 'primary' : ''}" id="to-boss" ${chOpen ? '' : 'disabled'}>${chOpen ? `Дальше: босс главы ${ch.id} →` : `Босс главы ${ch.id}: пройди все параграфы`}</button>`;
+  else foot.innerHTML = nt ? `<button class="btn ${topicDone(tid) ? 'primary' : ''}" id="next-topic">Дальше: ${esc(D.topicById[nt].paragraph)} ${esc(D.topicById[nt].title)} →</button>` : '';
   box.appendChild(foot);
-  if (nt) $('next-topic').onclick = () => { state.current = nt; save(); renderHome(); window.scrollTo(0, 0); };
+  if ($('next-topic')) $('next-topic').onclick = () => { state.current = nt; save(); renderHome(); window.scrollTo(0, 0); };
+  if ($('to-boss')) $('to-boss').onclick = () => renderBoss(ch.id);
 }
 
 // список параграфов (плашка)
@@ -220,6 +213,15 @@ function renderTopicPicker() {
       b.onclick = () => { state.current = tid; save(); $('picker').classList.add('hidden'); renderHome(); };
       box.appendChild(b);
     }
+    // босс главы — отдельной карточкой
+    const open = ch.topics.every(topicDone), bs = bossState(ch.id);
+    const lv = BOSS_LEVELS.filter(l => (bs['l' + l.id] || 0) >= 70).length;
+    const bb = document.createElement('button'); bb.className = 'picker-item boss' + (open ? '' : ' locked') + (bs.won ? ' done' : '');
+    bb.innerHTML = `<div class="picker-char">${BOSS_HOUSE[ch.id] || BOSS_HOUSE.VI}</div>
+      <div class="picker-body"><div class="picker-para">Босс</div><div class="picker-title">Босс главы ${ch.id}</div>
+      <div class="ticks">${[0,1,2].map(i => `<span class="tick ${i < lv ? 'on' : ''}"></span>`).join('')}<span class="small muted">${open ? (bs.won ? 'повержен' : 'три уровня') : 'пройди все параграфы'}</span></div></div>`;
+    bb.onclick = () => { if (!open) return; $('picker').classList.add('hidden'); renderBoss(ch.id); };
+    box.appendChild(bb);
   }
 }
 $('topic-pill').onclick = () => { renderTopicPicker(); $('picker').classList.toggle('hidden'); };
@@ -241,7 +243,8 @@ function bossState(chId) { return state.bosses[chId] || {}; }
 function renderBoss(chId) {
   const ch = D.topics.chapters.find(c => c.id === chId), bs = bossState(chId);
   $('boss-house').innerHTML = BOSS_HOUSE[chId] || BOSS_HOUSE.VI;
-  $('boss-title').textContent = `Босс главы ${ch.id}`;
+  $('boss-title').textContent = `Босс главы ${ch.id}`; $('boss-title').dataset.ch = ch.id;
+  const nt = nextTopic(ch.topics[ch.topics.length - 1]); $('boss-next').classList.toggle('hidden', !bs.won || !nt); if (nt) $('boss-next').textContent = `Дальше: ${D.topicById[nt].paragraph} ${D.topicById[nt].title} →`;
   $('boss-sub').textContent = ch.title;
   $('boss-hearts').textContent = '❤️'.repeat(state.hearts) + '🖤'.repeat(Math.max(0, 3 - state.hearts));
   const list = $('boss-levels'); list.innerHTML = '';
@@ -259,6 +262,7 @@ function renderBoss(chId) {
   show('screen-boss');
 }
 $('boss-back').onclick = () => { renderHome(); show('screen-home'); };
+$('boss-next').onclick = () => { const chId = $('boss-title').dataset.ch; const ch = D.topics.chapters.find(c => c.id === chId); const nt = nextTopic(ch.topics[ch.topics.length - 1]); if (nt) { state.current = nt; save(); } renderHome(); show('screen-home'); };
 
 // ---------- карточки перед уроком ----------
 let cards = null;
