@@ -80,6 +80,8 @@ const STEP_MECH = [ // механики шага, чередуются; факт
   ['order', 'choice', 'pairsx', 'type', 'tf', 'pairs', 'cloze', 'choice'],
 ];
 // каракули-иконки узлов (рисуются ручкой, как персонажи)
+const HEART = (on) => `<svg viewBox="0 0 32 30" width="24" height="22" fill="${on ? '#D9480F' : 'none'}" stroke="#1e2235" stroke-width="2.5" stroke-linejoin="round"><path d="M16 27L4 15Q-1 9 5 5q6-3 11 4q5-7 11-4q6 4 1 10z"/></svg>`;
+const heartsHTML = (n, max = 3) => Array.from({ length: max }, (_, i) => HEART(i < n)).join('');
 const DOODLE = {
   star:  '<path d="M32 8l7 16l17 2l-13 11l5 17l-16-9l-16 9l5-17l-13-11l17-2z"/>',
   check: '<path d="M14 34l12 12l26-28"/>',
@@ -153,7 +155,7 @@ function renderHome() {
   $('daily-btn').disabled = !ready;
   $('topic-pill-para').textContent = `Глава ${ch.id} · ${t.paragraph}`;
   $('topic-pill-title').textContent = t.title;
-  $('hearts-home').textContent = '❤️'.repeat(state.hearts) + '🖤'.repeat(Math.max(0, 3 - state.hearts));
+  $('hearts-home').innerHTML = heartsHTML(state.hearts);
 
   const box = $('map'); box.innerHTML = ''; sprinkle(box, 10, topicOrder().indexOf(tid) + 3);
   let currentIdx = STEP_PLAN.findIndex((k, i) => k !== 'chest' && !stepDone(tid, i));
@@ -261,7 +263,7 @@ function renderBoss(chId) {
   $('boss-title').textContent = `Босс главы ${ch.id}`; $('boss-title').dataset.ch = ch.id;
   const nt = nextTopic(ch.topics[ch.topics.length - 1]); $('boss-next').classList.toggle('hidden', !bs.won || !nt); if (nt) $('boss-next').textContent = `Дальше: ${D.topicById[nt].paragraph} ${D.topicById[nt].title} →`;
   $('boss-sub').textContent = ch.title;
-  $('boss-hearts').textContent = '❤️'.repeat(state.hearts) + '🖤'.repeat(Math.max(0, 3 - state.hearts));
+  $('boss-hearts').innerHTML = heartsHTML(state.hearts);
   const list = $('boss-levels'); list.innerHTML = '';
   BOSS_LEVELS.forEach((lv, i) => {
     const best = bs['l' + lv.id] || 0;
@@ -587,7 +589,7 @@ function startBoss(chId, level) {
 }
 function startDaily() { startRun('daily', buildDaily(), { intro: 'Микс дня: то, что подзабылось.' }); }
 
-function renderHearts() { if (run.hearts !== null) $('hearts').textContent = '❤️'.repeat(run.hearts); }
+function renderHearts() { if (run.hearts !== null) $('hearts').innerHTML = heartsHTML(run.hearts, Math.max(run.hearts, 1)); }
 function renderTask() {
   const t = run.tasks[run.i];
   $('progress-bar').style.width = (run.i / run.tasks.length * 100) + '%';

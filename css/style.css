@@ -47,8 +47,13 @@ h2.chapter { font-size: 18px; color: var(--muted); margin: 28px 0 8px; }
 .tick { width: 12px; height: 12px; border: 2px solid var(--ink); border-radius: 3px 5px 2px 6px; display: inline-block; transform: rotate(-4deg); }
 .tick.on { background: var(--ok); border-color: var(--ok); }
 .home-row { display: flex; gap: 10px; align-items: stretch; margin: 12px 0 4px; }
-.daily { flex: 1; display: flex; justify-content: space-between; align-items: center; gap: 12px; background: var(--accent-soft); border-radius: 16px; padding: 12px 14px; }
-.hearts-home { display: flex; align-items: center; justify-content: center; background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 0 12px; font-size: 16px; letter-spacing: 1px; min-width: 60px; }
+.daily { flex: 1; display: flex; justify-content: space-between; align-items: center; gap: 10px; background: var(--card); border: 2.5px solid #1e2235; border-radius: 255px 15px 225px 15px / 15px 225px 15px 255px; padding: 8px 12px; transform: rotate(-.5deg); }
+.daily-title { font-family: Caveat, cursive; font-size: 26px; font-weight: 700; line-height: 1; }
+.daily .btn { font-family: Caveat, cursive; font-size: 22px; padding: 6px 16px; border: 2.5px solid var(--accent); border-radius: 15px 255px 15px 225px / 225px 15px 255px 15px; transform: rotate(1.5deg); }
+.daily.off .btn { background: #e8e8e3; border-color: #b9bcb8; color: #8a8f8c; }
+.hearts-home { display: flex; flex-direction: row; align-items: center; justify-content: center; gap: 2px; flex: none; background: var(--card); border: 2.5px solid #1e2235; border-radius: 15px 225px 15px 255px / 255px 15px 225px 15px; padding: 0 10px; min-width: 60px; transform: rotate(.8deg); }
+.hearts-home svg { display: block; width: 20px; height: 18px; }
+#hearts-home { display: flex; flex-direction: row; gap: 2px; }
 .map { padding: 16px 0 24px; position: relative; }
 .node-row { position: relative; display: flex; flex-direction: column; align-items: center; padding: 10px 0; min-height: 124px; }
 .node-row.l { align-items: flex-start; padding-left: 14%; }
@@ -95,7 +100,7 @@ h2.chapter { font-size: 18px; color: var(--muted); margin: 28px 0 8px; }
 .x { background: none; border: 0; font-size: 20px; color: var(--muted); cursor: pointer; padding: 4px; }
 .progress { flex: 1; height: 8px; background: var(--line); border-radius: 999px; overflow: hidden; }
 #progress-bar { height: 100%; width: 0; background: var(--accent); transition: width .3s; }
-.hearts { font-size: 16px; letter-spacing: 2px; }
+.hearts { display: flex; gap: 2px; }
 .character { display: flex; gap: 12px; align-items: flex-start; background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 12px; }
 .char-face { font-size: 36px; line-height: 1; }
 .char-face.big { font-size: 72px; text-align: center; margin: 12px 0; }
@@ -220,8 +225,7 @@ body { background-image: repeating-linear-gradient(0deg, transparent 0 27px, #e9
 
 .picker-foot { font-family: Caveat, cursive; font-size: 22px; line-height: 1.2; text-align: center; color: var(--ink); margin: 6px 12px 20px; transform: rotate(-1deg); }
 
-.daily.off { opacity: .55; }
-.daily.off .btn { background: #d7d9d6; border-color: #d7d9d6; color: #8a8f8c; }
+.daily.off { opacity: .6; }
 .stats span, .hearts-home { cursor: pointer; }
 .info { width: 20px; height: 20px; border-radius: 50%; border: 2px solid var(--ink); background: none; font: 700 12px/1 inherit; cursor: pointer; vertical-align: middle; padding: 0; }
 .hint { position: fixed; inset: 0; background: rgba(30,34,53,.35); display: flex; align-items: center; justify-content: center; z-index: 50; padding: 24px; }
