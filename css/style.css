@@ -8,6 +8,7 @@
 html, body { margin: 0; background: var(--bg); color: var(--ink); font: 17px/1.45 -apple-system, "Segoe UI", Roboto, Arial, sans-serif; }
 button { font: inherit; color: inherit; }
 .top, .bottom { display: flex; justify-content: space-between; align-items: center; padding: 14px 18px; max-width: 720px; margin: 0 auto; }
+.top { position: relative; z-index: 2; }
 .brand { font-weight: 700; background: none; border: 0; padding: 0; cursor: pointer; }
 .beta { font-size: 12px; color: var(--muted); border: 1px solid var(--line); border-radius: 999px; padding: 1px 8px; margin-left: 6px; vertical-align: middle; }
 .stats { font-weight: 600; display: flex; gap: 12px; }
@@ -178,17 +179,18 @@ h2.chapter { font-size: 18px; color: var(--muted); margin: 28px 0 8px; }
 .welcome-title span { color: var(--accent); }
 .welcome-sub { color: var(--muted); font-size: 17px; margin: 0 0 16px; }
 .welcome-bubbles { display: grid; gap: 8px; margin: 0 0 20px; text-align: left; }
-.bubble { background: var(--card); border: 2px solid var(--line); border-radius: 16px; padding: 10px 14px; font-size: 15px; }
+.bubble { background: var(--card); border: 2.5px solid #1e2235; border-radius: 16px; padding: 8px 14px; font-size: 15px; }
+.bubble b { font-family: Caveat, cursive; font-size: 22px; }
 .bubble b { margin-right: 6px; }
 .b-opti b { color: #1F3FBF; } .b-nik b { color: #D9480F; } .b-dushka b { color: #3FA66A; }
-.btn.big { font-size: 20px; padding: 16px 40px; border-radius: 255px 18px 225px 18px / 18px 225px 18px 255px; margin-bottom: 16px; transform: rotate(1deg); }
+.btn.big { font-family: Caveat, cursive; font-size: 30px; padding: 10px 44px; background: var(--card); color: var(--accent); border: 3px solid var(--accent); border-radius: 255px 18px 225px 18px / 18px 225px 18px 255px; margin-bottom: 16px; transform: rotate(1deg); }
 .btn.big:active { transform: rotate(1deg) scale(.97); }
 .bubble { border-radius: 255px 18px 225px 18px / 18px 225px 18px 255px; }
 .bubble:nth-child(2) { transform: rotate(.6deg); } .bubble:nth-child(3) { transform: rotate(-.5deg); }
 
 /* дудл-декор */
 .decor-layer { position: absolute; inset: 0; pointer-events: none; z-index: 0; overflow: hidden; }
-#screen-welcome { position: relative; }
+#screen-welcome { position: relative; margin-top: -8px; }
 #screen-welcome > *:not(.decor-layer) { position: relative; z-index: 1; }
 .decor-pos { position: absolute; pointer-events: none; line-height: 0; }
 .decor { stroke: #a9b0c4; }
