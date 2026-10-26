@@ -36,7 +36,7 @@ function touchStreak() {
   state.streak = state.lastDay === y ? state.streak + 1 : 1;
   state.lastDay = t; save();
 }
-function renderStats() { $('xp').textContent = '⭐ ' + state.xp; $('streak').textContent = '🔥 ' + state.streak; }
+function renderStats() { $('xp').innerHTML = STAR() + ' ' + state.xp; $('streak').innerHTML = FIRE() + ' ' + state.streak; }
 
 // ---------- персонажи (js/characters.js) ----------
 const ROLE = { optimist: 'opti', panic: 'nik', nerd: 'dushka', neutral: null };
@@ -80,7 +80,11 @@ const STEP_MECH = [ // механики шага, чередуются; факт
   ['order', 'choice', 'pairsx', 'type', 'tf', 'pairs', 'cloze', 'choice'],
 ];
 // каракули-иконки узлов (рисуются ручкой, как персонажи)
-const HEART = (on) => `<svg viewBox="0 0 32 30" width="24" height="22" fill="${on ? '#D9480F' : 'none'}" stroke="#1e2235" stroke-width="2.5" stroke-linejoin="round"><path d="M16 27L4 15Q-1 9 5 5q6-3 11 4q5-7 11-4q6 4 1 10z"/></svg>`;
+// штриховка ручкой: косые линии внутри фигуры
+const HATCH = (id, col) => `<defs><pattern id="${id}" width="3.5" height="3.5" patternUnits="userSpaceOnUse" patternTransform="rotate(-35)"><path d="M0 0v3.5" stroke="${col}" stroke-width="2.6"/></pattern></defs>`;
+const HEART = (on) => `<svg viewBox="0 0 32 30" width="24" height="22">${HATCH('hh', '#D9480F')}<path d="M16 27L4 15Q-1 9 5 5q6-3 11 4q5-7 11-4q6 4 1 10z" fill="${on ? 'url(#hh)' : 'none'}" stroke="#1e2235" stroke-width="2.5" stroke-linejoin="round"/></svg>`;
+const STAR = () => `<svg viewBox="0 0 32 32" width="22" height="22">${HATCH('hs', '#e0a800')}<path d="M16 3l4 9l9 1l-7 6l2 10l-8-5l-8 5l2-10l-7-6l9-1z" fill="url(#hs)" stroke="#1e2235" stroke-width="2.2" stroke-linejoin="round"/></svg>`;
+const FIRE = () => `<svg viewBox="0 0 32 32" width="22" height="22">${HATCH('hf', '#e8641b')}<path d="M16 2q2 7 7 11q5 6 1 13q-4 5-9 4q-7-1-8-8q-1-6 4-10q-1 5 3 6q0-6 2-16z" fill="url(#hf)" stroke="#1e2235" stroke-width="2.2" stroke-linejoin="round"/></svg>`;
 const heartsHTML = (n, max = 3) => Array.from({ length: max }, (_, i) => HEART(i < n)).join('');
 const DOODLE = {
   star:  '<path d="M32 8l7 16l17 2l-13 11l5 17l-16-9l-16 9l5-17l-13-11l17-2z"/>',
@@ -686,9 +690,9 @@ $('brand').onclick = () => { if (!$('screen-task').classList.contains('hidden'))
 $('daily-btn').onclick = startDaily;
 // подсказки по значкам
 const HINTS = {
-  xp: ['⭐ Звезды', 'Опыт. 10 за каждое верное задание, 5 за «почти». Просто растут — это приятно.'],
-  streak: ['🔥 Огонек', 'Дней подряд, когда ты заходил и проходил хотя бы один шаг. Пропустил день — сгорает.'],
-  hearts: ['❤️ Сердца', 'Жизни на третьем уровне босса. Дает сундук: пройди тест по прошлому параграфу на 70%. Максимум три, после босса сгорают.'],
+  xp: ['Звезды', 'Опыт. 10 за каждое верное задание, 5 за «почти». Просто растут — это приятно.'],
+  streak: ['Огонек', 'Дней подряд, когда ты заходил и проходил хотя бы один шаг. Пропустил день — сгорает.'],
+  hearts: ['Сердца', 'Жизни на третьем уровне босса. Дает сундук: пройди тест по прошлому параграфу на 70%. Максимум три, после босса сгорают.'],
   daily: ['Микс дня', '5 заданий из того, в чем ты ошибался, и того, что давно не повторял. Собирается заново каждый день.'],
 };
 function showHint(k) { const [t, body] = HINTS[k]; $('hint-title').textContent = t; $('hint-text').textContent = body; $('hint').classList.remove('hidden'); }
