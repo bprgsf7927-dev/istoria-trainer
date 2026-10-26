@@ -201,7 +201,8 @@ function renderHome() {
 function renderTopicPicker() {
   const box = $('picker-list'); box.innerHTML = '';
   for (const ch of D.topics.chapters) {
-    const h = document.createElement('div'); h.className = 'picker-ch'; h.innerHTML = `<span>Глава ${ch.id}</span> ${esc(ch.title)}`; box.appendChild(h);
+    const frame = document.createElement('div'); frame.className = 'picker-frame'; box.appendChild(frame);
+    const h = document.createElement('div'); h.className = 'picker-ch'; h.innerHTML = `<span>Глава ${ch.id}</span> ${esc(ch.title)}`; frame.appendChild(h);
     for (const tid of ch.topics) {
       const t = D.topicById[tid];
       const done = STEP_PLAN.filter((k, i) => k !== 'chest' && stepDone(tid, i)).length;
@@ -211,7 +212,7 @@ function renderTopicPicker() {
       b.innerHTML = `<div class="picker-char">${charSVG(who, topicDone(tid) ? 'happy' : 'idle', tid, 34)}</div>
         <div class="picker-body"><div class="picker-para">${esc(t.paragraph)}</div><div class="picker-title">${esc(t.title)}</div><div class="ticks">${boxes}${topicDone(tid) ? '<span class="small" style="color:var(--ok)">готово</span>' : ''}</div></div>`;
       b.onclick = () => { state.current = tid; save(); $('picker').classList.add('hidden'); renderHome(); };
-      box.appendChild(b);
+      frame.appendChild(b);
     }
     // босс главы — отдельной карточкой
     const open = ch.topics.every(topicDone), bs = bossState(ch.id);
@@ -221,7 +222,7 @@ function renderTopicPicker() {
       <div class="picker-body"><div class="picker-para">Босс</div><div class="picker-title">Босс главы ${ch.id}</div>
       <div class="ticks">${[0,1,2].map(i => `<span class="tick ${i < lv ? 'on' : ''}"></span>`).join('')}<span class="small muted">${open ? (bs.won ? 'повержен' : 'три уровня') : 'пройди все параграфы'}</span></div></div>`;
     bb.onclick = () => { if (!open) return; $('picker').classList.add('hidden'); renderBoss(ch.id); };
-    box.appendChild(bb);
+    frame.appendChild(bb);
   }
 }
 $('topic-pill').onclick = () => { renderTopicPicker(); $('picker').classList.toggle('hidden'); };
