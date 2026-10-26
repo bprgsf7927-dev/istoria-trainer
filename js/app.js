@@ -4,7 +4,8 @@
 
 const COURSE = 'srednie-veka-6';
 const LESSON_LEN = 8;
-const STORE_KEY = 'istoria-trainer-v2';
+const STORE_KEY = 'istoria-trainer-v3';
+const OLD_KEY2 = 'istoria-trainer-v2';
 const OLD_KEY = 'istoria-trainer-v1';
 const XP_PER_TASK = 10;
 
@@ -19,12 +20,14 @@ function loadState() {
   try {
     const s = JSON.parse(localStorage.getItem(STORE_KEY));
     if (s) return s;
+    const s2 = JSON.parse(localStorage.getItem(OLD_KEY2));
+    if (s2) return { v: 3, xp: s2.xp || 0, streak: s2.streak || 0, lastDay: s2.lastDay || null, wrong: s2.wrong || [], seen: s2.seen || {}, moreClicks: s2.moreClicks || 0 };
     const old = JSON.parse(localStorage.getItem(OLD_KEY));
     if (old) return { v: 2, streak: old.streak || 0, lastDay: old.lastDay || null, wrong: old.wrongIds || [] };
   } catch { /* нет доступа к хранилищу — работаем в памяти */ }
   return {};
 }
-const state = Object.assign({ v: 2, xp: 0, streak: 0, lastDay: null, wrong: [], seen: {}, lessons: {}, exams: {}, moreClicks: 0 }, loadState());
+const state = Object.assign({ v: 3, xp: 0, streak: 0, lastDay: null, wrong: [], seen: {}, steps: {}, layouts: {}, hearts: 0, bosses: {}, current: null, moreClicks: 0 }, loadState());
 function save() { try { localStorage.setItem(STORE_KEY, JSON.stringify(state)); } catch { /* приватный режим */ } }
 function touchStreak() {
   const t = today();
@@ -66,65 +69,147 @@ function show(id) {
   window.scrollTo(0, 0);
 }
 
-// ---------- главный экран ----------
-function lessonBest(id) { return (state.lessons[id] || {}).best || 0; }
-function examLevel(ch) { return state.exams[ch] || {}; }
+// ---------- карта параграфа ----------
+// Узлы параграфа: 3 шага → сундук (прошлый параграф) → 2 шага → контрольная. Шаг = 8 заданий.
+const STEP_PLAN = ['step', 'step', 'step', 'chest', 'step', 'step', 'exam'];
+const STEP_MECH = [ // механики шага, чередуются; факт попадает в 2–3 шага в разных механиках
+  ['pairs', 'choice', 'tf', 'cloze', 'pairs', 'choice', 'type', 'tf'],
+  ['choice', 'order', 'pairsx', 'tf', 'choice', 'cloze', 'type', 'pairs'],
+  ['tf', 'pairs', 'choice', 'type', 'order', 'choice', 'cloze', 'pairsx'],
+  ['pairs', 'type', 'choice', 'cloze', 'tf', 'order', 'choice', 'pairs'],
+  ['order', 'choice', 'pairsx', 'type', 'tf', 'pairs', 'cloze', 'choice'],
+];
+const EPOCH = { '15': '🏹', '16-17': '🐉', '18': '🐘', '19': '🐪', '20': '🦅', '21-22': '🏰', '23': '🕌', '24': '🧭' };
+
+function topicOrder() { return D.topics.chapters.flatMap(c => c.topics); }
+function prevTopic(tid) { const o = topicOrder(); const i = o.indexOf(tid); return i > 0 ? o[i - 1] : null; }
+function nextTopic(tid) { const o = topicOrder(); const i = o.indexOf(tid); return i < o.length - 1 ? o[i + 1] : null; }
+function chapterOf(tid) { return D.topics.chapters.find(c => c.topics.includes(tid)); }
+function isLastInChapter(tid) { const ch = chapterOf(tid); return ch.topics[ch.topics.length - 1] === tid; }
+
+// Раскладка фактов параграфа по 5 шагам: фиксируется один раз на ученика.
+function layoutFor(tid) {
+  if (state.layouts[tid]) return state.layouts[tid];
+  const facts = D.facts.filter(f => f.topic === tid).map(f => f.id);
+  const terms = D.terms.filter(t => t.topic === tid).map(t => t.id);
+  const persons = D.persons.filter(p => p.topic === tid).map(p => p.id);
+  const spread = (ids) => { // каждый id в 2–3 шага из 5
+    const steps = [[], [], [], [], []];
+    shuffle(ids).forEach((id, i) => {
+      const n = ids.length <= 6 ? 3 : 2;
+      const starts = pick([0, 1, 2, 3, 4], n);
+      starts.forEach(k => steps[k].push(id));
+    });
+    return steps;
+  };
+  const lay = { facts: spread(facts), terms: spread(terms), persons: spread(persons) };
+  state.layouts[tid] = lay; save();
+  return lay;
+}
+const stepKey = (tid, i) => `${tid}:${i}`;
+function stepBest(tid, i) { return (state.steps[stepKey(tid, i)] || {}).best || 0; }
+function stepDone(tid, i) { return stepBest(tid, i) >= 70; }
+function nodeOpen(tid, idx) { // индекс в STEP_PLAN
+  if (STEP_PLAN[idx] === 'chest') return true;
+  for (let k = 0; k < idx; k++) if (STEP_PLAN[k] !== 'chest' && !stepDone(tid, k)) return false;
+  return true;
+}
+function topicDone(tid) { return STEP_PLAN.every((k, i) => k === 'chest' || stepDone(tid, i)); }
+
+function currentTopic() {
+  if (state.current && D.topicById[state.current]) return state.current;
+  const first = topicOrder().find(t => !topicDone(t)) || topicOrder()[0];
+  state.current = first; return first;
+}
 
 function renderHome() {
-  const box = $('home-list');
-  box.innerHTML = '';
+  const tid = currentTopic();
+  const t = D.topicById[tid], ch = chapterOf(tid);
   const dailyPool = dailyFacts();
   $('daily').classList.toggle('hidden', dailyPool.length < 3);
+  $('topic-pill-para').textContent = `Глава ${ch.id} · ${t.paragraph}`;
+  $('topic-pill-title').textContent = t.title;
+  $('hearts-home').textContent = '❤️'.repeat(state.hearts) + '🖤'.repeat(Math.max(0, 3 - state.hearts));
 
+  const box = $('map'); box.innerHTML = '';
+  let currentIdx = STEP_PLAN.findIndex((k, i) => k !== 'chest' && !stepDone(tid, i));
+  if (currentIdx < 0) currentIdx = STEP_PLAN.length;
+  let stepNo = 0;
+  STEP_PLAN.forEach((kind, idx) => {
+    const row = document.createElement('div');
+    row.className = 'node-row ' + (['l', 'c', 'r', 'c', 'l', 'c', 'r'][idx]);
+    const b = document.createElement('button');
+    const open = nodeOpen(tid, idx) && !(kind === 'chest' && !prevTopic(tid));
+    const best = stepBest(tid, idx);
+    b.className = `node ${kind}` + (open ? '' : ' locked') + (idx === currentIdx ? ' current' : '') + (best >= 70 ? ' done' : '');
+    b.disabled = !open;
+    let icon = '⭐', label = '';
+    if (kind === 'step') { stepNo++; icon = best >= 70 ? '✓' : '⭐'; label = `Шаг ${stepNo}`; }
+    if (kind === 'chest') { icon = '🎁'; label = prevTopic(tid) ? `Сундук: ${D.topicById[prevTopic(tid)].paragraph}` : 'Сундук<br><span class="small muted">со следующего параграфа</span>'; }
+    if (kind === 'exam') { icon = best >= 70 ? '🏆' : '📝'; label = 'Контрольная'; }
+    b.innerHTML = `<span class="node-icon">${icon}</span>`;
+    b.onclick = () => kind === 'step' ? startStep(tid, idx) : kind === 'chest' ? startChest(tid) : startTopicExam(tid);
+    row.appendChild(b);
+    const cap = document.createElement('div');
+    cap.className = 'node-cap';
+    cap.innerHTML = `${esc(label)}${best ? `<br><span class="small muted">${best}%</span>` : ''}`;
+    row.appendChild(cap);
+    if (idx === currentIdx) {
+      const c = document.createElement('div'); c.className = 'mascot';
+      c.textContent = EPOCH[tid] || '🙂'; row.appendChild(c);
+    }
+    box.appendChild(row);
+  });
+
+  // босс главы — после последнего параграфа главы
+  if (isLastInChapter(tid)) {
+    const row = document.createElement('div'); row.className = 'node-row c boss-row';
+    const open = ch.topics.every(topicDone);
+    const b = document.createElement('button');
+    const won = (state.bosses[ch.id] || {}).won;
+    b.className = 'node boss' + (open ? '' : ' locked') + (won ? ' done' : '');
+    b.disabled = !open;
+    b.innerHTML = `<span class="node-icon">${won ? '🏅' : '🐲'}</span>`;
+    b.onclick = () => startBoss(ch.id);
+    row.appendChild(b);
+    const cap = document.createElement('div'); cap.className = 'node-cap';
+    cap.innerHTML = `Босс главы ${ch.id}${open ? '' : '<br><span class="small muted">пройди все параграфы главы</span>'}`;
+    row.appendChild(cap);
+    box.appendChild(row);
+  }
+  // переход дальше
+  const nt = nextTopic(tid);
+  const foot = document.createElement('div'); foot.className = 'map-foot';
+  foot.innerHTML = nt ? `<button class="btn ${topicDone(tid) ? 'primary' : ''}" id="next-topic">Дальше: ${esc(D.topicById[nt].paragraph)} ${esc(D.topicById[nt].title)} →</button>` : '<p class="muted small">Это последний параграф курса.</p>';
+  box.appendChild(foot);
+  if (nt) $('next-topic').onclick = () => { state.current = nt; save(); renderHome(); window.scrollTo(0, 0); };
+}
+
+// список параграфов (плашка)
+function renderTopicPicker() {
+  const box = $('picker-list'); box.innerHTML = '';
   for (const ch of D.topics.chapters) {
-    const h = document.createElement('h2');
-    h.className = 'chapter';
-    h.textContent = `Глава ${ch.id}. ${ch.title}`;
-    box.appendChild(h);
-
+    const h = document.createElement('div'); h.className = 'picker-ch'; h.textContent = `Глава ${ch.id}. ${ch.title}`; box.appendChild(h);
     for (const tid of ch.topics) {
       const t = D.topicById[tid];
-      const lessons = D.lessons.filter(l => l.topic === tid);
-      const wrap = document.createElement('div');
-      wrap.className = 'topic';
-      wrap.innerHTML = `<div class="topic-head"><span class="para">${esc(t.paragraph)}</span> ${esc(t.title)}</div>`;
-      const list = document.createElement('div');
-      list.className = 'cards';
-      lessons.forEach((l, i) => {
-        const best = lessonBest(l.id);
-        const b = document.createElement('button');
-        b.className = 'card lesson' + (best === LESSON_LEN ? ' done' : '');
-        b.innerHTML = `<div class="lesson-title">Урок ${i + 1}. ${esc(l.title)}</div>
-          <div class="small muted">${l.factIds.length} дат · ${best ? `лучший ${best}/${LESSON_LEN}` : 'не пройден'}${best === LESSON_LEN ? ' ✓' : ''}</div>`;
-        b.onclick = () => openCards(l);
-        list.appendChild(b);
-      });
-      wrap.appendChild(list);
-      box.appendChild(wrap);
+      const done = STEP_PLAN.filter((k, i) => k !== 'chest' && stepDone(tid, i)).length;
+      const b = document.createElement('button'); b.className = 'card picker-item' + (tid === state.current ? ' active' : '');
+      b.innerHTML = `<span class="para">${esc(t.paragraph)}</span> ${esc(t.title)}<div class="small muted">${done} из 6 ${topicDone(tid) ? '✓' : ''}</div>`;
+      b.onclick = () => { state.current = tid; save(); $('picker').classList.add('hidden'); renderHome(); };
+      box.appendChild(b);
     }
-
-    // подготовка к контрольной по главе
-    const ex = examLevel(ch.id);
-    const exam = document.createElement('div');
-    exam.className = 'exam';
-    const l1 = ex.l1 || 0, l2 = ex.l2 || 0, l3 = ex.l3 || 0;
-    const open2 = l1 >= 70, open3 = l2 >= 70;
-    exam.innerHTML = `<div class="exam-head">🎯 Контрольная по главе ${ch.id}${ex.badge ? ' · 🏅 закрыта' : ''}</div>
-      <div class="levels">
-        <button class="level" data-ch="${ch.id}" data-lv="1"><b>1. Разминка</b><span>пары и правда-ложь · 10</span><em>${l1 ? l1 + '%' : ''}</em></button>
-        <button class="level" data-ch="${ch.id}" data-lv="2" ${open2 ? '' : 'disabled'}><b>2. Как учитель спросит</b><span>порядок, вставка, выбор · 10</span><em>${open2 ? (l2 ? l2 + '%' : '') : '🔒 70% на уровне 1'}</em></button>
-        <button class="level" data-ch="${ch.id}" data-lv="3" ${open3 ? '' : 'disabled'}><b>3. Босс</b><span>напечатать с клавиатуры · 8 · две жизни</span><em>${open3 ? (l3 ? l3 + '%' : '') : '🔒 70% на уровне 2'}</em></button>
-      </div>`;
-    exam.querySelectorAll('.level').forEach(b => b.onclick = () => startExam(b.dataset.ch, +b.dataset.lv));
-    box.appendChild(exam);
   }
 }
+$('topic-pill').onclick = () => { renderTopicPicker(); $('picker').classList.toggle('hidden'); };
+$('picker-close').onclick = () => $('picker').classList.add('hidden');
 
 // ---------- карточки перед уроком ----------
 let cards = null;
-function openCards(lesson) {
-  cards = { lesson, i: 0, flipped: false, facts: lesson.factIds.map(id => D.factById[id]) };
-  $('cards-title').textContent = lesson.title;
+function openCards(tid, idx) {
+  const lay = layoutFor(tid); const k = STEP_PLAN.slice(0, idx).filter(x => x !== 'chest').length;
+  const ids = lay.facts[k] && lay.facts[k].length ? lay.facts[k] : D.facts.filter(f => f.topic === tid).map(f => f.id);
+  cards = { tid, idx, i: 0, flipped: false, facts: ids.map(id => D.factById[id]) };
+  $('cards-title').textContent = `${D.topicById[tid].paragraph} · Шаг ${k + 1}`;
   renderCard();
   show('screen-cards');
 }
@@ -137,7 +222,7 @@ function renderCard() {
 $('flip').onclick = () => { cards.flipped = !cards.flipped; renderCard(); };
 $('cards-prev').onclick = () => { cards.i = (cards.i - 1 + cards.facts.length) % cards.facts.length; cards.flipped = false; renderCard(); };
 $('cards-next').onclick = () => { cards.i = (cards.i + 1) % cards.facts.length; cards.flipped = false; renderCard(); };
-$('cards-start').onclick = () => startLesson(cards.lesson);
+$('cards-start').onclick = () => runStep(cards.tid, cards.idx);
 $('cards-home').onclick = () => { renderHome(); show('screen-home'); };
 
 // ---------- генераторы заданий ----------
@@ -314,63 +399,59 @@ function tType(fact) {
   };
 }
 
-// ---------- сборка урока / уровня / микса ----------
-function buildLesson(lesson) {
-  const facts = lesson.factIds.map(id => D.factById[id]);
-  const topicFacts = D.facts.filter(f => f.topic === lesson.topic);
-  const terms = byTopics(D.terms, [lesson.topic]), persons = byTopics(D.persons, [lesson.topic]);
-  const causes = byTopics(D.causes, [lesson.topic]), cloze = byTopics(D.cloze, [lesson.topic]), tf = byTopics(D.truefalse, [lesson.topic]);
-  // ошибки прошлых раундов — первыми
-  const ordered = [...facts.filter(f => state.wrong.includes(f.id)), ...shuffle(facts.filter(f => !state.wrong.includes(f.id)))];
-  let fi = 0; const nextFact = () => ordered[fi++ % ordered.length];
-  const plan = ['pairs', 'choice', 'order', 'cloze', 'tf', 'type', 'pairs', 'choice'];
+// ---------- сборка шага / сундука / контрольной / босса ----------
+function buildTasksFrom(pool, mech) {
+  // pool: {facts, terms, persons, causes, cloze, tf} — массивы объектов; mech — список механик
+  const yf = yearFacts(pool.facts);
+  const wrongFirst = [...pool.facts.filter(f => state.wrong.includes(f.id)), ...shuffle(pool.facts.filter(f => !state.wrong.includes(f.id)))];
+  let fi = 0; const nextFact = () => wrongFirst[fi++ % wrongFirst.length];
+  const usedTf = new Set(), usedCloze = new Set(), usedCause = new Set();
   const tasks = [];
-  const usedTf = new Set(), usedCloze = new Set();
-  for (const kind of plan) {
-    if (kind === 'pairs' && tasks.some(t => t.kind === 'pairs') && (terms.length >= 4 || persons.length >= 4)) {
-      tasks.push(terms.length >= 4 && (persons.length < 4 || Math.random() < 0.5) ? tPairsTerms(terms) : tPairsPersons(persons));
-    }
-    else if (kind === 'pairs' && facts.length >= 3) tasks.push(tPairs(facts.length >= 4 ? facts : topicFacts));
-    else if (kind === 'order' && yearFacts(topicFacts).length >= 4) tasks.push(tOrder(yearFacts(facts).length >= 4 ? facts : topicFacts));
-    else if (kind === 'cloze' && cloze.some(c => !usedCloze.has(c.id))) { const c = pick(cloze.filter(c => !usedCloze.has(c.id)), 1)[0]; usedCloze.add(c.id); tasks.push(tCloze(c)); }
-    else if (kind === 'tf' && tf.some(s => !usedTf.has(s.id))) { const s = pick(tf.filter(s => !usedTf.has(s.id)), 1)[0]; usedTf.add(s.id); tasks.push(tTrueFalse(s)); }
-    else if (kind === 'type' && yearFacts(facts).length) tasks.push(tType(pick(yearFacts(facts), 1)[0]));
+  const allFacts = D.facts, allTopicFacts = pool.allFacts || pool.facts;
+  for (const m of mech) {
+    if (m === 'pairs' && pool.facts.length >= 3) tasks.push(tPairs(pool.facts.length >= 4 ? pool.facts : allTopicFacts));
+    else if (m === 'pairsx' && (pool.terms.length >= 4 || pool.persons.length >= 4)) tasks.push(pool.terms.length >= 4 && (pool.persons.length < 4 || Math.random() < 0.5) ? tPairsTerms(pool.terms) : tPairsPersons(pool.persons));
+    else if ((m === 'pairsx' || m === 'pairs') && allTopicFacts.length >= 3) tasks.push(tPairs(allTopicFacts));
+    else if (m === 'order' && yearFacts(allTopicFacts).length >= 4) tasks.push(tOrder(yf.length >= 4 ? pool.facts : allTopicFacts));
+    else if (m === 'cloze' && pool.cloze.some(c => !usedCloze.has(c.id))) { const c = pick(pool.cloze.filter(c => !usedCloze.has(c.id)), 1)[0]; usedCloze.add(c.id); tasks.push(tCloze(c)); }
+    else if (m === 'tf' && pool.tf.some(x => !usedTf.has(x.id))) { const x = pick(pool.tf.filter(x => !usedTf.has(x.id)), 1)[0]; usedTf.add(x.id); tasks.push(tTrueFalse(x)); }
+    else if (m === 'type' && yf.length) tasks.push(tType(pick(yf, 1)[0]));
     else {
-      // выбор: дата, или термин / персона / причина — чтобы урок не был только про даты
       const r = Math.random();
-      if (r < 0.55 || (!terms.length && !persons.length && !causes.length)) tasks.push(tChoiceDate(nextFact(), topicFacts.length >= 4 ? topicFacts : D.facts));
-      else if (r < 0.75 && terms.length >= 4) tasks.push(tChoiceTerm(pick(terms, 1)[0], D.terms));
-      else if (r < 0.9 && persons.length >= 2) tasks.push(tChoicePerson(pick(persons, 1)[0], D.persons));
-      else if (causes.length) tasks.push(tCause(pick(causes, 1)[0]));
-      else tasks.push(tChoiceDate(nextFact(), D.facts));
+      if (r < 0.5 && pool.facts.length) tasks.push(tChoiceDate(nextFact(), allTopicFacts.length >= 4 ? allTopicFacts : allFacts));
+      else if (r < 0.7 && pool.terms.length) tasks.push(tChoiceTerm(pick(pool.terms, 1)[0], D.terms));
+      else if (r < 0.85 && pool.persons.length) tasks.push(tChoicePerson(pick(pool.persons, 1)[0], D.persons));
+      else if (pool.causes.some(c => !usedCause.has(c.id))) { const c = pick(pool.causes.filter(c => !usedCause.has(c.id)), 1)[0]; usedCause.add(c.id); tasks.push(tCause(c)); }
+      else if (pool.facts.length) tasks.push(tChoiceDate(nextFact(), allFacts));
+      else if (pool.terms.length) tasks.push(tChoiceTerm(pick(pool.terms, 1)[0], D.terms));
     }
   }
   return tasks.slice(0, LESSON_LEN);
 }
-
-function buildExam(chapter, level) {
-  const topics = chapter.topics;
-  const facts = byTopics(D.facts, topics), yf = yearFacts(facts);
-  const tf = byTopics(D.truefalse, topics), cloze = byTopics(D.cloze, topics), terms = byTopics(D.terms, topics), persons = byTopics(D.persons, topics), causes = byTopics(D.causes, topics);
-  const tasks = [];
-  if (level === 1) {
-    const tfs = pick(tf, 5);
-    const kinds = [() => tPairs(pick(facts, 6)), () => tPairsTerms(terms), () => tPairs(pick(facts, 6)), () => tPairsPersons(persons), () => tPairs(pick(facts, 6))];
-    for (let i = 0; i < 10; i++) tasks.push(i % 2 === 0 ? kinds[i / 2]() : tTrueFalse(tfs[(i - 1) / 2]));
-  } else if (level === 2) {
-    const cl = pick(cloze, 3), cs = pick(causes, 2);
-    const plan = ['order', 'cloze', 'choice', 'cause', 'order', 'cloze', 'choice', 'cause', 'cloze', 'choice'];
-    let ci = 0, ca = 0;
-    for (const k of plan) {
-      if (k === 'order') tasks.push(tOrder(pick(yf, 7)));
-      else if (k === 'cloze') tasks.push(tCloze(cl[ci++ % cl.length]));
-      else if (k === 'cause') tasks.push(tCause(cs[ca++ % cs.length]));
-      else { const r = Math.random(); tasks.push(r < 0.4 ? tChoiceDate(pick(facts, 1)[0], facts) : r < 0.7 ? tChoiceTerm(pick(terms, 1)[0], D.terms) : tChoicePerson(pick(persons, 1)[0], D.persons)); }
-    }
-  } else {
-    for (const f of pick(yf, 8)) tasks.push(tType(f));
-  }
-  return tasks;
+function topicPool(tid) {
+  return { facts: D.facts.filter(f => f.topic === tid), allFacts: D.facts.filter(f => f.topic === tid),
+    terms: D.terms.filter(x => x.topic === tid), persons: D.persons.filter(x => x.topic === tid),
+    causes: D.causes.filter(x => x.topic === tid), cloze: D.cloze.filter(x => x.topic === tid), tf: D.truefalse.filter(x => x.topic === tid) };
+}
+function buildStep(tid, idx) {
+  const k = STEP_PLAN.slice(0, idx).filter(x => x !== 'chest').length; // 0..4
+  const lay = layoutFor(tid), p = topicPool(tid);
+  const sub = (all, ids) => { const s = all.filter(x => ids.includes(x.id)); return s.length ? s : all; };
+  const pool = { ...p, facts: sub(p.facts, lay.facts[k]), terms: sub(p.terms, lay.terms[k]), persons: sub(p.persons, lay.persons[k]) };
+  return buildTasksFrom(pool, STEP_MECH[k]);
+}
+function buildChest(tid) {
+  const pt = prevTopic(tid);
+  const p = topicPool(pt);
+  return buildTasksFrom(p, ['pairs', 'tf', 'choice', 'order', 'pairsx', 'choice', 'cloze', 'type']);
+}
+function buildTopicExam(tid) {
+  const p = topicPool(tid);
+  return buildTasksFrom(p, ['order', 'cloze', 'choice', 'pairsx', 'type', 'choice', 'tf', 'cloze']);
+}
+function buildBoss(ch) {
+  const yf = yearFacts(byTopics(D.facts, ch.topics));
+  return pick(yf, 8).map(tType);
 }
 
 function dailyFacts() {
@@ -388,21 +469,28 @@ function buildDaily() {
 // ---------- прогон раунда ----------
 let run = null;
 function startRun(kind, tasks, meta) {
-  run = { kind, tasks, i: 0, score: 0, hearts: kind === 'exam' && meta.level === 3 ? 2 : null, meta, xp: 0 };
+  run = { kind, tasks, i: 0, score: 0, hearts: kind === 'boss' ? Math.max(1, state.hearts) : null, meta, xp: 0 };
   touchStreak(); renderStats();
   $('hearts').classList.toggle('hidden', run.hearts === null);
   speak('neutral', meta.intro || '');
   show('screen-task');
   renderTask();
 }
-function startLesson(l) { startRun('lesson', buildLesson(l), { lesson: l, intro: `${l.title}. ${LESSON_LEN} заданий.` }); }
-function startExam(chId, level) {
+function startStep(tid, idx) { openCards(tid, idx); }
+function runStep(tid, idx) { const k = STEP_PLAN.slice(0, idx).filter(x => x !== 'chest').length; startRun('step', buildStep(tid, idx), { tid, idx, intro: `${D.topicById[tid].paragraph}, шаг ${k + 1}. ${LESSON_LEN} заданий.` }); }
+function startChest(tid) {
+  const pt = prevTopic(tid);
+  if (!pt) { alert('Это первый параграф курса, сундук откроется со следующего.'); return; }
+  startRun('chest', buildChest(tid), { tid, idx: STEP_PLAN.indexOf('chest'), intro: `Сундук: вспоминаем ${D.topicById[pt].paragraph}. За 70% — сердце на босса.` });
+}
+function startTopicExam(tid) { startRun('exam', buildTopicExam(tid), { tid, idx: STEP_PLAN.indexOf('exam'), intro: `Контрольная по ${D.topicById[tid].paragraph}. Как учитель спросит.` }); }
+function startBoss(chId) {
   const ch = D.topics.chapters.find(c => c.id === chId);
-  startRun('exam', buildExam(ch, level), { chapter: ch, level, intro: level === 3 ? 'Босс. Две жизни, без вариантов.' : `Глава ${ch.id}, уровень ${level}.` });
+  startRun('boss', buildBoss(ch), { chapter: ch, intro: `Босс главы ${ch.id}. Даты с клавиатуры, жизней: ${Math.max(1, state.hearts)}.` });
 }
 function startDaily() { startRun('daily', buildDaily(), { intro: 'Микс дня: то, что подзабылось.' }); }
 
-function renderHearts() { if (run.hearts !== null) $('hearts').textContent = '❤️'.repeat(run.hearts) + '🖤'.repeat(2 - run.hearts); }
+function renderHearts() { if (run.hearts !== null) $('hearts').textContent = '❤️'.repeat(run.hearts); }
 function renderTask() {
   const t = run.tasks[run.i];
   $('progress-bar').style.width = (run.i / run.tasks.length * 100) + '%';
@@ -456,23 +544,26 @@ function finishRun(lost) {
   const n = run.tasks.length, s = run.score, pct = Math.round(s / n * 100);
   state.xp += run.xp;
   let title, text, face = '🎉';
-  if (run.kind === 'lesson') {
-    const id = run.meta.lesson.id, prev = state.lessons[id] || { best: 0, rounds: 0 };
-    state.lessons[id] = { best: Math.max(prev.best, Math.floor(s)), rounds: prev.rounds + 1 };
-    title = s === n ? 'Все верно. Серьезно, все.' : s >= n * 0.7 ? `${s} из ${n}. Крепко.` : `${s} из ${n}. Ошибки запомнил, спрошу их первыми.`;
-    text = run.meta.lesson.title;
-    face = s === n ? '🏆' : s >= n * 0.7 ? '😄' : '🤓';
-  } else if (run.kind === 'exam') {
-    const ch = run.meta.chapter.id, lv = run.meta.level, ex = state.exams[ch] || {};
-    if (lost) { title = 'Жизни кончились.'; text = `Босс устоял. Прошел ${run.i} из ${n}. Еще раз?`; face = '😱'; }
+  const passed = pct >= 70;
+  if (run.kind === 'step' || run.kind === 'exam' || run.kind === 'chest') {
+    const { tid, idx } = run.meta;
+    const key = stepKey(tid, idx), prev = state.steps[key] || { best: 0, rounds: 0 };
+    state.steps[key] = { best: Math.max(prev.best, pct), rounds: prev.rounds + 1 };
+    const name = run.kind === 'step' ? 'Шаг' : run.kind === 'exam' ? 'Контрольная' : 'Сундук';
+    if (run.kind === 'chest' && passed && !prev.rewarded) { state.hearts = Math.min(3, state.hearts + 1); state.steps[key].rewarded = true; }
+    else if (prev.rewarded) state.steps[key].rewarded = true;
+    title = pct === 100 ? 'Все верно. Серьезно, все.' : passed ? `${pct}%. ${name} пройден${run.kind === 'exam' ? 'а' : ''}.` : `${pct}%. Нужно 70. Ошибки запомнил, спрошу их первыми.`;
+    text = run.kind === 'chest' && passed ? `+1 сердце на босса (всего ${state.hearts})` : `${D.topicById[tid].paragraph} · ${D.topicById[tid].title}`;
+    face = pct === 100 ? '🏆' : passed ? '😄' : '🤓';
+  } else if (run.kind === 'boss') {
+    const ch = run.meta.chapter.id;
+    if (lost) { title = 'Жизни кончились.'; text = `Босс устоял. Прошел ${run.i} из ${n}. Сердца копятся в сундуках.`; face = '😱'; }
     else {
-      ex['l' + lv] = Math.max(ex['l' + lv] || 0, pct);
-      if (lv === 3 && pct >= 70) ex.badge = true;
-      title = pct >= 70 ? (lv === 3 ? 'Глава закрыта. 🏅' : `Уровень ${lv} пройден: ${pct}%`) : `${pct}%. Нужно 70, чтобы открыть следующий.`;
-      text = `Глава ${ch}. ${run.meta.chapter.title}`;
-      face = pct >= 70 ? '🏆' : '🤓';
+      state.bosses[ch] = { won: passed || (state.bosses[ch] || {}).won, best: Math.max(pct, (state.bosses[ch] || {}).best || 0) };
+      title = passed ? `Босс главы ${ch} повержен. 🏅` : `${pct}%. Босс устоял, нужно 70.`;
+      text = run.meta.chapter.title; face = passed ? '🏆' : '🤓';
     }
-    state.exams[ch] = ex;
+    state.hearts = 0;
   } else {
     title = `${s} из ${n}`; text = 'Микс дня закрыт. Завтра будет новый.'; face = s === n ? '😄' : '🙂';
   }
@@ -488,10 +579,10 @@ function finishRun(lost) {
 $('next-btn').onclick = next;
 $('check-btn').onclick = () => {};
 $('quit').onclick = () => { if (confirm('Выйти? Прогресс этого раунда не сохранится.')) { renderHome(); show('screen-home'); } };
-$('again-btn').onclick = () => run.kind === 'lesson' ? startLesson(run.meta.lesson) : run.kind === 'exam' ? startExam(run.meta.chapter.id, run.meta.level) : startDaily();
+$('again-btn').onclick = () => run.kind === 'step' ? runStep(run.meta.tid, run.meta.idx) : run.kind === 'chest' ? startChest(run.meta.tid) : run.kind === 'exam' ? startTopicExam(run.meta.tid) : run.kind === 'boss' ? startBoss(run.meta.chapter.id) : startDaily();
 $('home-btn').onclick = () => { renderHome(); show('screen-home'); };
 $('brand').onclick = () => { if ($('screen-home').classList.contains('hidden') && !$('screen-task').classList.contains('hidden')) return $('quit').onclick(); renderHome(); show('screen-home'); };
 $('daily-btn').onclick = startDaily;
 
 loadContent().then(() => { renderStats(); renderHome(); show('screen-home'); })
-  .catch(e => { $('home-list').innerHTML = `<p class="muted">Не удалось загрузить контент (${esc(e.message)}). Открой сайт через сервер, а не как файл.</p>`; });
+  .catch(e => { $('map').innerHTML = `<p class="muted">Не удалось загрузить контент (${esc(e.message)}). Открой сайт через сервер, а не как файл.</p>`; });

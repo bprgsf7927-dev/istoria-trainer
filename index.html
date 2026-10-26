@@ -16,15 +16,24 @@
 </header>
 
 <main id="app">
-  <!-- Главный экран -->
+  <!-- Главный экран: карта параграфа -->
   <section id="screen-home" class="screen">
-    <div id="daily" class="daily hidden">
-      <div><b>Микс дня</b><div class="muted small">5 заданий из того, что подзабылось</div></div>
-      <button class="btn primary" id="daily-btn">Погнали</button>
+    <button class="topic-pill" id="topic-pill">
+      <div><div class="pill-para" id="topic-pill-para"></div><div class="pill-title" id="topic-pill-title"></div></div>
+      <span class="pill-icon">☰</span>
+    </button>
+    <div id="picker" class="picker hidden">
+      <div class="picker-head"><b>Параграфы</b><button class="x" id="picker-close">✕</button></div>
+      <div id="picker-list"></div>
     </div>
-    <h1>Средние века</h1>
-    <p class="muted">Выбери урок или готовься к контрольной по главе.</p>
-    <div id="home-list"></div>
+    <div class="home-row">
+      <div id="daily" class="daily hidden">
+        <div><b>Микс дня</b><div class="muted small">5 заданий из подзабытого</div></div>
+        <button class="btn primary" id="daily-btn">Погнали</button>
+      </div>
+      <div class="hearts-home" title="Сердца на босса"><span id="hearts-home"></span></div>
+    </div>
+    <div id="map" class="map"></div>
   </section>
 
   <!-- Карточки перед уроком -->
