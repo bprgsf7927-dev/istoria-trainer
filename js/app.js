@@ -150,6 +150,7 @@ function currentTopic() {
 }
 
 function renderHome() {
+  $('picker').classList.add('hidden'); $('map').classList.remove('hidden'); document.querySelector('.home-row').classList.remove('hidden');
   const tid = currentTopic();
   const t = D.topicById[tid], ch = chapterOf(tid);
   const dailyPool = dailyFacts();
