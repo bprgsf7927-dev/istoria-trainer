@@ -82,7 +82,8 @@ const STEP_MECH = [ // механики шага, чередуются; факт
 // каракули-иконки узлов (рисуются ручкой, как персонажи)
 // штриховка ручкой: косые линии внутри фигуры
 const HATCH = (id, col) => `<defs><pattern id="${id}" width="3.5" height="3.5" patternUnits="userSpaceOnUse" patternTransform="rotate(-35)"><path d="M0 0v3.5" stroke="${col}" stroke-width="2.6"/></pattern></defs>`;
-const HEART = (on) => `<svg viewBox="0 0 32 30" width="24" height="22">${HATCH('hh', '#D9480F')}<path d="M16 27L4 15Q-1 9 5 5q6-3 11 4q5-7 11-4q6 4 1 10z" fill="${on ? 'url(#hh)' : 'none'}" stroke="#1e2235" stroke-width="2.5" stroke-linejoin="round"/></svg>`;
+let _hid = 0;
+const HEART = (on) => { const id = 'hh' + (_hid++); return `<svg viewBox="0 0 32 30" width="24" height="22">${HATCH(id, '#D9480F')}<path d="M16 27L4 15Q-1 9 5 5q6-3 11 4q5-7 11-4q6 4 1 10z" fill="${on ? 'url(#' + id + ')' : 'none'}" stroke="#1e2235" stroke-width="2.5" stroke-linejoin="round"/></svg>`; };
 const STAR = () => `<svg viewBox="0 0 32 32" width="22" height="22">${HATCH('hs', '#e0a800')}<path d="M16 3l4 9l9 1l-7 6l2 10l-8-5l-8 5l2-10l-7-6l9-1z" fill="url(#hs)" stroke="#1e2235" stroke-width="2.2" stroke-linejoin="round"/></svg>`;
 const FIRE = () => `<svg viewBox="0 0 32 32" width="22" height="22">${HATCH('hf', '#e8641b')}<path d="M16 2q2 7 7 11q5 6 1 13q-4 5-9 4q-7-1-8-8q-1-6 4-10q-1 5 3 6q0-6 2-16z" fill="url(#hf)" stroke="#1e2235" stroke-width="2.2" stroke-linejoin="round"/></svg>`;
 const heartsHTML = (n, max = 3) => Array.from({ length: max }, (_, i) => HEART(i < n)).join('');
@@ -276,7 +277,7 @@ function renderBoss(chId) {
     const b = document.createElement('button');
     b.className = 'level' + (open ? '' : ' locked') + (best >= 70 ? ' done' : '');
     b.disabled = !open;
-    b.innerHTML = `<b>${lv.id}. ${lv.title}</b><span>${lv.sub}</span><em>${!open ? '🔒 70% выше' : best ? best + '%' : ''}</em>`;
+    b.innerHTML = `<b>${lv.id}. ${lv.title}</b><span>${lv.sub}</span><em>${!open ? 'нужно 70% выше' : best ? best + '%' : ''}</em>`;
     b.onclick = () => startBoss(chId, lv.id);
     list.appendChild(b);
   });

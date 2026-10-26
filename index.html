@@ -7,7 +7,7 @@
 <title>Истори-тренажер</title>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;700&display=swap">
-<link rel="stylesheet" href="css/style.css?v=202610261406">
+<link rel="stylesheet" href="css/style.css?v=202610261420">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="assets/icon.svg?v=2" type="image/svg+xml">
 <link rel="apple-touch-icon" href="assets/apple-touch-icon.png?v=2">
@@ -35,10 +35,10 @@
   <section id="screen-home" class="screen">
     <button class="topic-pill" id="topic-pill">
       <div><div class="pill-para" id="topic-pill-para"></div><div class="pill-title" id="topic-pill-title"></div></div>
-      <span class="pill-icon">☰</span>
+      <span class="pill-icon"><svg viewBox="0 0 32 32" width="28" height="28" fill="none" stroke="#1F3FBF" stroke-width="3.5" stroke-linecap="round"><path d="M5 9q11-2 22 0M5 16q11 2 22 0M6 23q10-1 21 1"/></svg></span>
     </button>
     <div id="picker" class="picker hidden">
-      <div class="picker-head"><b>Параграфы</b><button class="x" id="picker-close">✕</button></div>
+      <div class="picker-head"><b>Параграфы</b><button class="x" id="picker-close">×</button></div>
       <div id="picker-list"></div>
       <p class="picker-foot" id="picker-foot"></p>
     </div>
@@ -60,7 +60,7 @@
       <h1 id="boss-title"></h1>
       <p id="boss-sub" class="muted"></p>
       <div class="hearts-home" id="boss-hearts"></div>
-      <p id="boss-badge" class="badge hidden">🏅 Глава закрыта</p>
+      <p id="boss-badge" class="badge hidden">Глава закрыта</p>
     </div>
     <div class="levels" id="boss-levels"></div>
     <p class="muted small">Сердца на третий уровень копятся в сундуках. Нет сердец — одна жизнь.</p>
@@ -79,7 +79,7 @@
   <!-- Урок / уровень / микс -->
   <section id="screen-task" class="screen hidden">
     <div class="taskbar">
-      <button class="x" id="quit" title="Выйти">✕</button>
+      <button class="x" id="quit" title="Выйти">×</button>
       <div class="progress"><div id="progress-bar"></div></div>
       <div id="hearts" class="hearts hidden"></div>
     </div>
@@ -92,7 +92,7 @@
       <p id="feedback-text"></p>
       <p id="assoc" class="assoc hidden"></p>
       <div class="row">
-        <button id="more-btn" class="btn small hidden">🔍 хочу все знать</button>
+        <button id="more-btn" class="btn small hidden">хочу все знать</button>
         <button id="next-btn" class="btn primary">Дальше</button>
       </div>
       <p id="more-text" class="more hidden"></p>
@@ -115,8 +115,8 @@
 
 <div id="hint" class="hint hidden"><div class="hint-box"><b id="hint-title"></b><p id="hint-text"></p><span class="small muted">нажми, чтобы закрыть</span></div></div>
 <footer class="bottom muted">Проект Дани. Персонажи и шутки — тоже его.</footer>
-<script>window.APP_V="202610261406";</script>
+<script>window.APP_V="202610261420";</script>
 <script src="js/characters.js?v=1"></script>
-<script src="js/app.js?v=202610261406"></script>
+<script src="js/app.js?v=202610261420"></script>
 </body>
 </html>
