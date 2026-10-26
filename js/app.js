@@ -55,7 +55,7 @@ function speak(role, text) {
 const D = {};
 async function loadContent() {
   const names = ['topics', 'facts', 'terms', 'persons', 'causes', 'cloze', 'truefalse', 'lessons'];
-  const res = await Promise.all(names.map(n => fetch(`content/${COURSE}/${n}.json`).then(r => { if (!r.ok) throw new Error(n); return r.json(); })));
+  const res = await Promise.all(names.map(n => fetch(`content/${COURSE}/${n}.json?v=${window.APP_V || ''}`).then(r => { if (!r.ok) throw new Error(n); return r.json(); })));
   names.forEach((n, i) => D[n] = res[i]);
   D.factById = Object.fromEntries(D.facts.map(f => [f.id, f]));
   D.topicById = Object.fromEntries(D.topics.topics.map(t => [t.id, t]));
