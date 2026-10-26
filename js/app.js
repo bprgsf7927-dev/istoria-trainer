@@ -671,12 +671,15 @@ const DECOR = [
   '<path d="M6 40l12-32l12 32M12 26h12" />',                                                      // буква А как значок
   '<path d="M8 36l8-8l-8-8l8-8M24 36l8-8l-8-8l8-8" />',                                           // стрелки
 ];
-function decorSVG(i, size = 44, rot = 0) { return `<svg class="decor" viewBox="0 0 48 48" width="${size}" height="${size}" style="transform:rotate(${rot}deg)" fill="none" stroke="#1e2235" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">${DECOR[i % DECOR.length]}</svg>`; }
+function decorSVG(i, size = 44, rot = 0) { return `<svg class="decor" viewBox="0 0 48 48" width="${size}" height="${size}" style="transform:rotate(${rot}deg)" fill="none" stroke="#a9b0c4" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">${DECOR[i % DECOR.length]}</svg>`; }
 function sprinkle(el, n, seed) {
   // декор вокруг: позиции детерминированы seed, чтобы не прыгали
   let s = seed; const rnd = () => { s = (s * 9301 + 49297) % 233280; return s / 233280; };
   let html = '';
-  for (let i = 0; i < n; i++) html += `<div class="decor-pos" style="left:${(rnd() * 88 + 2).toFixed(0)}%;top:${(rnd() * 92 + 2).toFixed(0)}%;opacity:${(rnd() * .25 + .18).toFixed(2)}">${decorSVG(Math.floor(rnd() * DECOR.length), 26 + rnd() * 30, rnd() * 60 - 30)}</div>`;
+  for (let i = 0; i < n; i++) {
+    const side = rnd() < 0.5; const left = side ? rnd() * 14 : 84 + rnd() * 12; // только по краям, не под текстом
+    html += `<div class="decor-pos" style="left:${left.toFixed(0)}%;top:${(rnd() * 92 + 2).toFixed(0)}%;opacity:${(rnd() * .3 + .35).toFixed(2)}">${decorSVG(Math.floor(rnd() * DECOR.length), 22 + rnd() * 24, rnd() * 60 - 30)}</div>`;
+  }
   el.insertAdjacentHTML('beforeend', html);
 }
 function renderWelcome() {

@@ -1,6 +1,6 @@
 /* Минималистичный белый. Персонажи и стиль придут после выбора команды. */
 :root {
-  --bg: #fbfbf8; --ink: #1e2235; --muted: #6a7179; --line: #e3e6e4;
+  --bg: #fbfbf8; --ink: #1e2235; --muted: #4f5663; --line: #e3e6e4;
   --accent: #1f3fbf; --accent-soft: #e9edfb; --ok: #2f9e5b; --ok-soft: #eef9f1;
   --bad: #d9480f; --bad-soft: #fdf1ea; --half: #d9a400; --half-soft: #fff8e1; --card: #ffffff;
 }
@@ -170,6 +170,7 @@ h2.chapter { font-size: 18px; color: var(--muted); margin: 28px 0 8px; }
 #screen-welcome { position: relative; }
 #screen-welcome > *:not(.decor-layer) { position: relative; z-index: 1; }
 .decor-pos { position: absolute; pointer-events: none; line-height: 0; }
+.decor { stroke: #a9b0c4; }
 .map .decor-pos { z-index: 0; }
 .map { overflow: hidden; isolation: isolate; }
 .node-row { z-index: 1; }
