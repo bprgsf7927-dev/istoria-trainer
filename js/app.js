@@ -38,17 +38,17 @@ function touchStreak() {
 }
 function renderStats() { $('xp').textContent = '⭐ ' + state.xp; $('streak').textContent = '🔥 ' + state.streak; }
 
-// ---------- персонажи-заглушки (до выбора команды) ----------
-const CHAR = {
-  optimist: { face: '😄', say: ['Да! Так и знал, что ты сможешь.', 'Это было красиво.', 'Еще одна дата в копилке.', 'Красавчик.'] },
-  panic:    { face: '😱', say: ['Все пропало... ладно, не все.', 'Я же говорил, что дата страшная!', 'Ох. Ну, давай еще раз.', 'Сердце не выдержит.'] },
-  nerd:     { face: '🤓', say: ['Вообще-то, вот что надо запомнить:', 'Для протокола:', 'Записывай:', 'Маленький лайфхак:'] },
-  neutral:  { face: '🙂', say: ['Поехали.', 'Следующее.', 'Так, внимание.'] },
-};
+// ---------- персонажи (js/characters.js) ----------
+const ROLE = { optimist: 'opti', panic: 'nik', nerd: 'dushka', neutral: null };
+const MOOD = { optimist: 'happy', panic: 'upset', nerd: 'upset', neutral: 'idle' };
+let lastChar = 'opti';
 function speak(role, text) {
-  $('char-face').textContent = CHAR[role].face;
-  const line = CHAR[role].say[Math.floor(Math.random() * CHAR[role].say.length)];
-  $('char-say').textContent = text ? `${line} ${text}` : line;
+  const id = ROLE[role] || ['opti', 'nik', 'dushka'][Math.floor(Math.random() * 3)];
+  lastChar = id;
+  const costume = run && run.meta && run.meta.tid ? run.meta.tid : null;
+  $('char-face').innerHTML = charSVG(id, MOOD[role], costume, 56);
+  const line = charLine(id, MOOD[role]);
+  $('char-say').innerHTML = `<b>${CHARS[id].name}:</b> ${esc(text ? `${line} ${text}` : line)}`;
 }
 
 // ---------- данные ----------
@@ -79,8 +79,29 @@ const STEP_MECH = [ // механики шага, чередуются; факт
   ['pairs', 'type', 'choice', 'cloze', 'tf', 'order', 'choice', 'pairs'],
   ['order', 'choice', 'pairsx', 'type', 'tf', 'pairs', 'cloze', 'choice'],
 ];
+// каракули-иконки узлов (рисуются ручкой, как персонажи)
+const DOODLE = {
+  star:  '<path d="M32 8l7 16l17 2l-13 11l5 17l-16-9l-16 9l5-17l-13-11l17-2z"/>',
+  check: '<path d="M14 34l12 12l26-28"/>',
+  chest: '<path d="M10 28q22-14 44 0v22q-22 8-44 0z"/><path d="M10 28h44M30 28v10l4-2v-8"/>',
+  exam:  '<path d="M18 8h22l10 10v38H18z"/><path d="M24 30h20M24 40h14M40 8v10h10"/>',
+  trophy:'<path d="M20 10h24v14q0 14-12 14t-12-14z"/><path d="M20 14q-10 0-8 10q2 8 10 8M44 14q10 0 8 10q-2 8-10 8M32 38v10M22 50h20"/>',
+  boss:  '<path d="M16 44q-6-26 16-32q22 6 16 32z"/><path d="M22 20l-8-10M42 20l8-10M26 28q3-4 6 0M38 28q3-4 6 0M24 40q8-6 16 0"/>',
+  lock:  '<path d="M20 28h24v22H20z"/><path d="M24 28v-8q8-10 16 0v8"/>',
+};
+const dood = (k, col) => `<svg viewBox="0 0 64 64" width="36" height="36" fill="none" stroke="${col}" stroke-width="5" stroke-linecap="round" stroke-linejoin="round">${DOODLE[k]}</svg>`;
+// кривой кружок узла
+const wobble = (col, fill, r = 44) => { let d = ''; for (let i = 0; i <= 12; i++) { const a = i / 12 * Math.PI * 2, rr = r + Math.sin(i * 2.7) * 3 + (i % 3) * 1.5; d += (i ? 'L' : 'M') + (50 + Math.cos(a) * rr).toFixed(1) + ' ' + (50 + Math.sin(a) * rr).toFixed(1); } return `<svg class="ring" viewBox="0 0 100 100"><path d="${d}z" fill="${fill}" stroke="${col}" stroke-width="4" stroke-linejoin="round"/></svg>`; };
 const EPOCH = { '15': '🏹', '16-17': '🐉', '18': '🐘', '19': '🐪', '20': '🦅', '21-22': '🏰', '23': '🕌', '24': '🧭' };
 
+// дорожка: кривой пунктир от предыдущего узла (выше) к текущему
+function trailSVG(from, to) {
+  const x = { l: 22, c: 50, r: 78 };
+  const x1 = x[from], x2 = x[to];
+  let d = `M${x1} -6`;
+  for (let i = 1; i <= 6; i++) { const t = i / 6; const x = x1 + (x2 - x1) * t + Math.sin(i * 2.1) * 5 + (i % 2 ? 3 : -3); const y = -6 + 60 * t + (i % 2 ? 2 : -2); d += ` L${x.toFixed(1)} ${y.toFixed(1)}`; }
+  return `<svg viewBox="0 0 100 60" preserveAspectRatio="none"><path d="${d}" fill="none" stroke="#1e2235" stroke-width="2" stroke-dasharray="5 6" stroke-linecap="round" stroke-linejoin="round" opacity=".55"/></svg>`;
+}
 function topicOrder() { return D.topics.chapters.flatMap(c => c.topics); }
 function prevTopic(tid) { const o = topicOrder(); const i = o.indexOf(tid); return i > 0 ? o[i - 1] : null; }
 function nextTopic(tid) { const o = topicOrder(); const i = o.indexOf(tid); return i < o.length - 1 ? o[i + 1] : null; }
@@ -131,7 +152,7 @@ function renderHome() {
   $('topic-pill-title').textContent = t.title;
   $('hearts-home').textContent = '❤️'.repeat(state.hearts) + '🖤'.repeat(Math.max(0, 3 - state.hearts));
 
-  const box = $('map'); box.innerHTML = '';
+  const box = $('map'); box.innerHTML = ''; sprinkle(box, 10, topicOrder().indexOf(tid) + 3);
   let currentIdx = STEP_PLAN.findIndex((k, i) => k !== 'chest' && !stepDone(tid, i));
   if (currentIdx < 0) currentIdx = STEP_PLAN.length;
   let stepNo = 0;
@@ -143,20 +164,24 @@ function renderHome() {
     const best = stepBest(tid, idx);
     b.className = `node ${kind}` + (open ? '' : ' locked') + (idx === currentIdx ? ' current' : '') + (best >= 70 ? ' done' : '');
     b.disabled = !open;
-    let icon = '⭐', label = '';
-    if (kind === 'step') { stepNo++; icon = best >= 70 ? '✓' : '⭐'; label = `Шаг ${stepNo}`; }
-    if (kind === 'chest') { icon = '🎁'; label = prevTopic(tid) ? `Сундук: ${D.topicById[prevTopic(tid)].paragraph}` : 'Сундук<br><span class="small muted">со следующего параграфа</span>'; }
-    if (kind === 'exam') { icon = best >= 70 ? '🏆' : '📝'; label = 'Контрольная'; }
-    b.innerHTML = `<span class="node-icon">${icon}</span>`;
+    let icon = 'star', label = '';
+    if (kind === 'step') { stepNo++; icon = best >= 70 ? 'check' : 'star'; label = `Шаг ${stepNo}`; }
+    if (kind === 'chest') { icon = 'chest'; label = prevTopic(tid) ? `Сундук: ${D.topicById[prevTopic(tid)].paragraph}` : 'Сундук<br><span class="small muted">со следующего параграфа</span>'; }
+    if (kind === 'exam') { icon = best >= 70 ? 'trophy' : 'exam'; label = 'Контрольная'; }
+    if (!open) icon = 'lock';
+    const col = !open ? '#9aa0a6' : best >= 70 ? '#3FA66A' : kind === 'chest' ? '#c48a00' : kind === 'exam' ? '#7c5cff' : '#1F3FBF';
+    b.innerHTML = `${wobble(col, open ? '#ffffff' : '#f0f0ec')}<span class="node-icon">${dood(icon, col)}</span>`;
+    if (idx > 0) { const path = document.createElement('div'); path.className = 'trail'; path.innerHTML = trailSVG(['l','c','r','c','l','c','r'][idx-1], ['l','c','r','c','l','c','r'][idx]); row.appendChild(path); }
     b.onclick = () => kind === 'step' ? startStep(tid, idx) : kind === 'chest' ? startChest(tid) : startTopicExam(tid);
     row.appendChild(b);
     const cap = document.createElement('div');
     cap.className = 'node-cap';
-    cap.innerHTML = `${esc(label)}${best ? `<br><span class="small muted">${best}%</span>` : ''}`;
+    cap.innerHTML = `${label}${best ? `<br><span class="small muted">${best}%</span>` : ''}`;
     row.appendChild(cap);
     if (idx === currentIdx) {
       const c = document.createElement('div'); c.className = 'mascot';
-      c.textContent = EPOCH[tid] || '🙂'; row.appendChild(c);
+      const who = ['opti', 'nik', 'dushka'][idx % 3];
+      c.innerHTML = charSVG(who, 'idle', tid, 60); row.appendChild(c);
     }
     box.appendChild(row);
   });
@@ -169,7 +194,9 @@ function renderHome() {
     const won = (state.bosses[ch.id] || {}).won;
     b.className = 'node boss' + (open ? '' : ' locked') + (won ? ' done' : '');
     b.disabled = !open;
-    b.innerHTML = `<span class="node-icon">${won ? '🏅' : '🐲'}</span>`;
+    const bcol = !open ? '#9aa0a6' : won ? '#3FA66A' : '#D9480F';
+    b.innerHTML = `${wobble(bcol, open ? '#ffffff' : '#f0f0ec', 46)}<span class="node-icon">${dood(!open ? 'lock' : won ? 'trophy' : 'boss', bcol)}</span>`;
+    const path = document.createElement('div'); path.className = 'trail'; path.innerHTML = trailSVG('r', 'c'); row.appendChild(path);
     b.onclick = () => startBoss(ch.id);
     row.appendChild(b);
     const cap = document.createElement('div'); cap.className = 'node-cap';
@@ -543,7 +570,7 @@ function finishRun(lost) {
   $('progress-bar').style.width = '100%';
   const n = run.tasks.length, s = run.score, pct = Math.round(s / n * 100);
   state.xp += run.xp;
-  let title, text, face = '🎉';
+  let title, text, face = 'opti';
   const passed = pct >= 70;
   if (run.kind === 'step' || run.kind === 'exam' || run.kind === 'chest') {
     const { tid, idx } = run.meta;
@@ -554,21 +581,21 @@ function finishRun(lost) {
     else if (prev.rewarded) state.steps[key].rewarded = true;
     title = pct === 100 ? 'Все верно. Серьезно, все.' : passed ? `${pct}%. ${name} пройден${run.kind === 'exam' ? 'а' : ''}.` : `${pct}%. Нужно 70. Ошибки запомнил, спрошу их первыми.`;
     text = run.kind === 'chest' && passed ? `+1 сердце на босса (всего ${state.hearts})` : `${D.topicById[tid].paragraph} · ${D.topicById[tid].title}`;
-    face = pct === 100 ? '🏆' : passed ? '😄' : '🤓';
+    face = pct === 100 ? 'opti' : passed ? 'opti' : 'dushka';
   } else if (run.kind === 'boss') {
     const ch = run.meta.chapter.id;
-    if (lost) { title = 'Жизни кончились.'; text = `Босс устоял. Прошел ${run.i} из ${n}. Сердца копятся в сундуках.`; face = '😱'; }
+    if (lost) { title = 'Жизни кончились.'; text = `Босс устоял. Прошел ${run.i} из ${n}. Сердца копятся в сундуках.`; face = 'nik'; }
     else {
       state.bosses[ch] = { won: passed || (state.bosses[ch] || {}).won, best: Math.max(pct, (state.bosses[ch] || {}).best || 0) };
       title = passed ? `Босс главы ${ch} повержен. 🏅` : `${pct}%. Босс устоял, нужно 70.`;
-      text = run.meta.chapter.title; face = passed ? '🏆' : '🤓';
+      text = run.meta.chapter.title; face = passed ? 'opti' : 'nik';
     }
     state.hearts = 0;
   } else {
-    title = `${s} из ${n}`; text = 'Микс дня закрыт. Завтра будет новый.'; face = s === n ? '😄' : '🙂';
+    title = `${s} из ${n}`; text = 'Микс дня закрыт. Завтра будет новый.'; face = s === n ? 'opti' : 'dushka';
   }
   save(); renderStats();
-  $('result-face').textContent = face;
+  $('result-face').innerHTML = charSVG(face, face === 'nik' ? 'upset' : 'happy', run.meta && run.meta.tid ? run.meta.tid : null, 90);
   $('result-title').textContent = title;
   $('result-text').textContent = text;
   $('result-xp').textContent = run.xp ? `+${run.xp} XP` : '';
@@ -581,8 +608,34 @@ $('check-btn').onclick = () => {};
 $('quit').onclick = () => { if (confirm('Выйти? Прогресс этого раунда не сохранится.')) { renderHome(); show('screen-home'); } };
 $('again-btn').onclick = () => run.kind === 'step' ? runStep(run.meta.tid, run.meta.idx) : run.kind === 'chest' ? startChest(run.meta.tid) : run.kind === 'exam' ? startTopicExam(run.meta.tid) : run.kind === 'boss' ? startBoss(run.meta.chapter.id) : startDaily();
 $('home-btn').onclick = () => { renderHome(); show('screen-home'); };
-$('brand').onclick = () => { if ($('screen-home').classList.contains('hidden') && !$('screen-task').classList.contains('hidden')) return $('quit').onclick(); renderHome(); show('screen-home'); };
+$('brand').onclick = () => { if (!$('screen-task').classList.contains('hidden')) return $('quit').onclick(); if (!$('screen-home').classList.contains('hidden')) { renderWelcome(); show('screen-welcome'); } else { renderHome(); show('screen-home'); } };
 $('daily-btn').onclick = startDaily;
 
-loadContent().then(() => { renderStats(); renderHome(); show('screen-home'); })
+const DECOR = [
+  '<path d="M6 30q10-26 24-4q8-22 20 0q10-18 18 2" />',                                         // облачко
+  '<path d="M4 20l10-16l6 14l8-18l6 16l8-12" />',                                                // зигзаг
+  '<path d="M20 4v10M20 30v10M4 22h10M30 22h10M9 11l7 7M31 11l-7 7M9 33l7-7M31 33l-7 7" />',      // лучики
+  '<path d="M10 24q10-24 20-2q10-22 20 2" /><path d="M14 30h30" />',                              // сердечко-крыша
+  '<path d="M4 8q14 10 0 20q16 10 0 20" />',                                                      // волна
+  '<circle cx="24" cy="24" r="14"/><circle cx="24" cy="24" r="5" fill="#1e2235"/>',               // глаз
+  '<path d="M6 40l12-32l12 32M12 26h12" />',                                                      // буква А как значок
+  '<path d="M8 36l8-8l-8-8l8-8M24 36l8-8l-8-8l8-8" />',                                           // стрелки
+];
+function decorSVG(i, size = 44, rot = 0) { return `<svg class="decor" viewBox="0 0 48 48" width="${size}" height="${size}" style="transform:rotate(${rot}deg)" fill="none" stroke="#1e2235" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">${DECOR[i % DECOR.length]}</svg>`; }
+function sprinkle(el, n, seed) {
+  // декор вокруг: позиции детерминированы seed, чтобы не прыгали
+  let s = seed; const rnd = () => { s = (s * 9301 + 49297) % 233280; return s / 233280; };
+  let html = '';
+  for (let i = 0; i < n; i++) html += `<div class="decor-pos" style="left:${(rnd() * 88 + 2).toFixed(0)}%;top:${(rnd() * 92 + 2).toFixed(0)}%;opacity:${(rnd() * .25 + .18).toFixed(2)}">${decorSVG(Math.floor(rnd() * DECOR.length), 26 + rnd() * 30, rnd() * 60 - 30)}</div>`;
+  el.insertAdjacentHTML('beforeend', html);
+}
+function renderWelcome() {
+  $('welcome-decor').innerHTML = ''; sprinkle($('welcome-decor'), 14, 7);
+  $('welcome-chars').innerHTML = ['opti', 'nik', 'dushka'].map(id => charSVG(id, 'idle', null, 80)).join('');
+  $('welcome-bubbles').innerHTML = ['opti', 'nik', 'dushka'].map(id => `<div class="bubble b-${id}"><b>${CHARS[id].name}</b> ${esc(charLine(id, 'idle'))}</div>`).join('');
+}
+$('welcome-start').onclick = () => { state.started = true; save(); renderHome(); show('screen-home'); };
+const hasProgress = () => state.started || Object.keys(state.steps || {}).length > 0;
+
+loadContent().then(() => { renderStats(); renderWelcome(); if (hasProgress()) { renderHome(); show('screen-home'); } else show('screen-welcome'); })
   .catch(e => { $('map').innerHTML = `<p class="muted">Не удалось загрузить контент (${esc(e.message)}). Открой сайт через сервер, а не как файл.</p>`; });
