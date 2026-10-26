@@ -108,6 +108,8 @@ const DOODLE = {
   lock:  '<path d="M20 28h24v22H20z"/><path d="M24 28v-8q8-10 16 0v8"/>',
   book:  '<path d="M10 14q11-4 22 2v34q-11-6-22-2z"/><path d="M32 16q11-6 22-2v34q-11-4-22 2"/><path d="M16 24h10M16 32h10M38 24h10M38 32h10"/>',
 };
+// корона за 100%: кривая, золотая штриховка
+const CROWN = () => `<svg class="crown" viewBox="0 0 64 40" width="44" height="28">${HATCH('hc', '#e0a800')}<path d="M6 34l-2-24l14 10l14-16l14 16l14-10l-2 24z" fill="url(#hc)" stroke="#1e2235" stroke-width="3" stroke-linejoin="round"/><path d="M8 34h48" stroke="#1e2235" stroke-width="3"/><circle cx="4" cy="10" r="2.5" fill="#1e2235"/><circle cx="32" cy="4" r="2.5" fill="#1e2235"/><circle cx="60" cy="10" r="2.5" fill="#1e2235"/></svg>`;
 const dood = (k, col) => `<svg viewBox="0 0 64 64" width="36" height="36" fill="none" stroke="${col}" stroke-width="5" stroke-linecap="round" stroke-linejoin="round">${DOODLE[k]}</svg>`;
 // кривой кружок узла
 const wobble = (col, fill, r = 44) => { let d = ''; for (let i = 0; i <= 12; i++) { const a = i / 12 * Math.PI * 2, rr = r + Math.sin(i * 2.7) * 3 + (i % 3) * 1.5; d += (i ? 'L' : 'M') + (50 + Math.cos(a) * rr).toFixed(1) + ' ' + (50 + Math.sin(a) * rr).toFixed(1); } return `<svg class="ring" viewBox="0 0 100 100"><path d="${d}z" fill="${fill}" stroke="${col}" stroke-width="4" stroke-linejoin="round"/></svg>`; };
@@ -195,7 +197,7 @@ function renderHome() {
     if (kind === 'exam') { icon = best >= 70 ? 'trophy' : 'exam'; label = 'Контрольная'; }
     if (!open) icon = 'lock';
     const col = !open ? '#9aa0a6' : best >= 70 ? '#3FA66A' : kind === 'chest' ? '#c48a00' : kind === 'exam' ? '#7c5cff' : kind === 'intro' ? '#1e2235' : '#1F3FBF';
-    b.innerHTML = `${wobble(col, open ? '#ffffff' : '#f0f0ec')}<span class="node-icon">${dood(icon, col)}</span>`;
+    b.innerHTML = `${wobble(col, open ? '#ffffff' : '#f0f0ec')}<span class="node-icon">${dood(icon, col)}</span>${best === 100 && kind !== 'intro' ? CROWN() : ''}`;
     if (idx > 0) { const path = document.createElement('div'); path.className = 'trail'; path.innerHTML = trailSVG(LANES[idx-1], LANES[idx]); row.appendChild(path); }
     b.onclick = () => kind === 'intro' ? openCards(tid, idx) : kind === 'step' ? startStep(tid, idx) : kind === 'chest' ? startChest(tid) : startTopicExam(tid);
     row.appendChild(b);
@@ -231,11 +233,12 @@ function renderTopicPicker() {
     for (const tid of ch.topics) {
       const t = D.topicById[tid];
       const [done, total] = topicProgress(tid);
+      const allPerfect = planFor(tid).every((k, i) => k === 'chest' || k === 'intro' || stepBest(tid, i) === 100);
       const b = document.createElement('button'); b.className = 'picker-item' + (tid === state.current ? ' active' : '') + (topicDone(tid) ? ' done' : '');
       const boxes = Array.from({ length: total }, (_, i) => `<span class="tick ${i < done ? 'on' : ''}"></span>`).join('');
       const who = ['opti', 'nik', 'dushka'][ch.topics.indexOf(tid) % 3];
       b.innerHTML = `<div class="picker-char">${charSVG(who, topicDone(tid) ? 'happy' : 'idle', tid, 34)}</div>
-        <div class="picker-body"><div class="picker-para">${esc(t.paragraph)}</div><div class="picker-title">${esc(t.title)}</div><div class="ticks">${boxes}${topicDone(tid) ? '<span class="small" style="color:var(--ok)">готово</span>' : ''}</div></div>`;
+        <div class="picker-body"><div class="picker-para">${esc(t.paragraph)}</div><div class="picker-title">${esc(t.title)}</div><div class="ticks">${boxes}${allPerfect ? CROWN() : topicDone(tid) ? '<span class="small" style="color:var(--ok)">готово</span>' : ''}</div></div>`;
       b.onclick = () => { state.current = tid; save(); togglePicker(false); renderHome(); };
       frame.appendChild(b);
     }
@@ -690,7 +693,7 @@ function finishRun(lost) {
     const name = run.kind === 'step' ? 'Тест' : run.kind === 'exam' ? 'Контрольная' : 'Сундук';
     if (run.kind === 'chest' && passed && !prev.rewarded) { state.hearts = Math.min(3, state.hearts + 1); state.steps[key].rewarded = true; }
     else if (prev.rewarded) state.steps[key].rewarded = true;
-    title = pct === 100 ? 'Все верно. Серьезно, все.' : passed ? `${pct}%. ${name} пройден${run.kind === 'exam' ? 'а' : ''}.` : `${pct}%. Нужно 70. Ошибки запомнил, спрошу их первыми.`;
+    title = pct === 100 ? 'Все верно. Корона твоя.' : passed ? `${pct}%. ${name} пройден${run.kind === 'exam' ? 'а' : ''}.` : `${pct}%. Нужно 70. Ошибки запомнил, спрошу их первыми.`;
     text = run.kind === 'chest' && passed ? `+1 сердце на босса (всего ${state.hearts})` : `${D.topicById[tid].paragraph} · ${D.topicById[tid].title}`;
     face = pct === 100 ? 'opti' : passed ? 'opti' : 'dushka';
   } else if (run.kind === 'boss') {
@@ -728,6 +731,7 @@ const HINTS = {
   xp: ['Звезды', 'Опыт. 10 за каждое верное задание, 5 за «почти». Просто растут — это приятно.'],
   streak: ['Огонек', 'Дней подряд, когда ты заходил и проходил хотя бы один шаг. Пропустил день — сгорает.'],
   hearts: ['Сердца', 'Жизни на третьем уровне босса. Дает сундук: пройди тест по прошлому параграфу на 70%. Максимум три, после босса сгорают.'],
+  crown: ['Корона', 'За 100% на тесте или контрольной. Любой тест можно пройти заново и добрать до короны. Собрал короны на всех тестах параграфа — корона в списке параграфов.'],
   daily: ['Микс дня', '5 заданий из того, в чем ты ошибался, и того, что давно не повторял. Собирается заново каждый день.'],
 };
 function showHint(k) { const [t, body] = HINTS[k]; $('hint-title').textContent = t; $('hint-text').textContent = body; $('hint').classList.remove('hidden'); }
@@ -735,6 +739,7 @@ $('xp').onclick = () => showHint('xp'); $('streak').onclick = () => showHint('st
 document.querySelector('.hearts-home').onclick = () => showHint('hearts');
 $('daily-info').onclick = (e) => { e.stopPropagation(); showHint('daily'); };
 $('hint').onclick = () => $('hint').classList.add('hidden');
+document.addEventListener('click', (e) => { if (e.target.closest('.crown')) { e.stopPropagation(); showHint('crown'); } }, true);
 
 const DECOR = [
   '<path d="M6 30q10-26 24-4q8-22 20 0q10-18 18 2" />',                                         // облачко
