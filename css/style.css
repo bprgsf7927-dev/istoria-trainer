@@ -12,8 +12,10 @@ button { font: inherit; color: inherit; }
 .beta { font-size: 12px; color: var(--muted); border: 1px solid var(--line); border-radius: 999px; padding: 1px 8px; margin-left: 6px; vertical-align: middle; }
 .stats { font-weight: 600; display: flex; gap: 12px; }
 main { max-width: 720px; margin: 0 auto; padding: 8px 18px 40px; }
-h1 { font-size: 28px; margin: 12px 0 4px; }
-h2 { font-size: 22px; margin: 16px 0; line-height: 1.3; }
+h1, h2, .brand, .pill-title, .picker-head, .lesson-title, .result-title { font-family: Caveat, 'Marker Felt', cursive; font-weight: 700; }
+h1 { font-size: 38px; margin: 12px 0 4px; line-height: 1.05; }
+h2 { font-size: 30px; margin: 14px 0; line-height: 1.15; }
+.brand { font-size: 26px; }
 h2.chapter { font-size: 18px; color: var(--muted); margin: 28px 0 8px; }
 .muted { color: var(--muted); }
 .small { font-size: 14px; }
@@ -24,7 +26,7 @@ h2.chapter { font-size: 18px; color: var(--muted); margin: 28px 0 8px; }
 .topic-pill { display: flex; justify-content: space-between; align-items: center; width: 100%; background: var(--card); color: var(--ink); border: 3px solid var(--accent); border-radius: 255px 18px 225px 18px / 18px 225px 18px 255px; padding: 14px 16px; text-align: left; cursor: pointer; transform: rotate(-.6deg); }
 .topic-pill:active { transform: rotate(-.6deg) scale(.99); }
 .pill-para { font-size: 12px; letter-spacing: .06em; text-transform: uppercase; color: var(--accent); font-weight: 700; }
-.pill-title { font-size: 18px; font-weight: 700; margin-top: 2px; }
+.pill-title { font-size: 26px; line-height: 1.05; margin-top: 2px; }
 .pill-para { font-family: Caveat, cursive; font-size: 16px; text-transform: none; letter-spacing: 0; }
 .pill-icon { font-size: 22px; color: var(--accent); }
 .picker { background: var(--card); border: 3px solid #1e2235; border-radius: 18px 255px 18px 225px / 225px 18px 255px 18px; padding: 14px 12px; margin-top: 10px; transform: rotate(.4deg); }
@@ -38,7 +40,7 @@ h2.chapter { font-size: 18px; color: var(--muted); margin: 28px 0 8px; }
 .picker-char { flex: none; line-height: 0; }
 .picker-body { flex: 1; min-width: 0; }
 .picker-para { font-family: Caveat, cursive; font-size: 20px; font-weight: 700; color: var(--accent); line-height: 1; }
-.picker-title { font-size: 15px; line-height: 1.25; margin: 2px 0 4px; }
+.picker-title { font-family: Caveat, cursive; font-size: 21px; font-weight: 700; line-height: 1.1; margin: 0 0 4px; }
 .ticks { display: flex; gap: 4px; align-items: center; }
 .tick { width: 12px; height: 12px; border: 2px solid var(--ink); border-radius: 3px 5px 2px 6px; display: inline-block; transform: rotate(-4deg); }
 .tick.on { background: var(--ok); border-color: var(--ok); }
@@ -147,6 +149,8 @@ h2.chapter { font-size: 18px; color: var(--muted); margin: 28px 0 8px; }
 .btn.small { padding: 8px 12px; font-size: 14px; font-weight: 500; }
 .xpgain { color: var(--accent); font-weight: 700; font-size: 20px; text-align: center; }
 #screen-result { text-align: center; }
+#screen-result h1 { font-size: 36px; }
+.exam-head, .boss-door-cap b { font-family: Caveat, cursive; font-size: 22px; }
 
 /* карточки */
 .flip { background: var(--card); border: 2px solid var(--line); border-radius: 20px; min-height: 180px; display: flex; align-items: center; justify-content: center; text-align: center; padding: 20px; font-size: 20px; cursor: pointer; transition: transform .25s; }
@@ -163,7 +167,7 @@ h2.chapter { font-size: 18px; color: var(--muted); margin: 28px 0 8px; }
 /* стартовая */
 #screen-welcome { text-align: center; padding-top: 8px; }
 .welcome-chars { display: flex; justify-content: center; gap: 4px; margin: 4px 0 8px; }
-.welcome-title { font-family: Caveat, 'Marker Felt', cursive; font-size: 46px; line-height: 1.05; margin: 8px 0; font-weight: 700; }
+.welcome-title { font-size: 46px; margin: 8px 0; }
 .welcome-title span { color: var(--accent); }
 .welcome-sub { color: var(--muted); font-size: 17px; margin: 0 0 16px; }
 .welcome-bubbles { display: grid; gap: 8px; margin: 0 0 20px; text-align: left; }
