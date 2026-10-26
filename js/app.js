@@ -70,14 +70,25 @@ function show(id) {
 }
 
 // ---------- карта параграфа ----------
-// Узлы параграфа: 3 шага → сундук (прошлый параграф) → 2 шага → контрольная. Шаг = 8 заданий.
-const STEP_PLAN = ['step', 'step', 'step', 'chest', 'step', 'step', 'exam'];
-const STEP_MECH = [ // механики шага, чередуются; факт попадает в 2–3 шага в разных механиках
-  ['pairs', 'choice', 'tf', 'cloze', 'pairs', 'choice', 'type', 'tf'],
-  ['choice', 'order', 'pairsx', 'tf', 'choice', 'cloze', 'type', 'pairs'],
+// Узлы параграфа: знакомство → тесты → сундук (после 2-го теста) → тесты → контрольная.
+// Число тестов зависит от объема параграфа: каждый факт должен встретиться ~3 раза, тест покрывает ~16 упоминаний.
+const REPEATS = 3, PER_TEST = 16, MIN_TESTS = 3, MAX_TESTS = 8;
+function topicFactCount(tid) { return D.facts.filter(f => f.topic === tid).length + D.terms.filter(t => t.topic === tid).length + D.persons.filter(p => p.topic === tid).length; }
+function testsFor(tid) { return Math.max(MIN_TESTS, Math.min(MAX_TESTS, Math.round(topicFactCount(tid) * REPEATS / PER_TEST))); }
+function planFor(tid) {
+  const n = testsFor(tid), plan = ['intro'];
+  for (let i = 0; i < n; i++) { plan.push('step'); if (i === 1) plan.push('chest'); }
+  plan.push('exam');
+  return plan;
+}
+const LANES = ['c', 'r', 'c', 'l', 'c', 'r', 'c', 'l', 'c', 'r', 'c', 'l'];
+const STEP_MECH = [ // механики теста по номеру; первые два — проще (без порядка и ввода), дальше по кругу
+  ['pairs', 'choice', 'tf', 'cloze', 'pairs', 'choice', 'pairsx', 'tf'],
+  ['choice', 'pairsx', 'tf', 'choice', 'cloze', 'pairs', 'choice', 'tf'],
   ['tf', 'pairs', 'choice', 'type', 'order', 'choice', 'cloze', 'pairsx'],
   ['pairs', 'type', 'choice', 'cloze', 'tf', 'order', 'choice', 'pairs'],
   ['order', 'choice', 'pairsx', 'type', 'tf', 'pairs', 'cloze', 'choice'],
+  ['choice', 'order', 'pairs', 'type', 'cloze', 'pairsx', 'tf', 'type'],
 ];
 // каракули-иконки узлов (рисуются ручкой, как персонажи)
 // штриховка ручкой: косые линии внутри фигуры
@@ -95,6 +106,7 @@ const DOODLE = {
   trophy:'<path d="M20 10h24v14q0 14-12 14t-12-14z"/><path d="M20 14q-10 0-8 10q2 8 10 8M44 14q10 0 8 10q-2 8-10 8M32 38v10M22 50h20"/>',
   boss:  '<path d="M16 44q-6-26 16-32q22 6 16 32z"/><path d="M22 20l-8-10M42 20l8-10M26 28q3-4 6 0M38 28q3-4 6 0M24 40q8-6 16 0"/>',
   lock:  '<path d="M20 28h24v22H20z"/><path d="M24 28v-8q8-10 16 0v8"/>',
+  book:  '<path d="M10 14q11-4 22 2v34q-11-6-22-2z"/><path d="M32 16q11-6 22-2v34q-11-4-22 2"/><path d="M16 24h10M16 32h10M38 24h10M38 32h10"/>',
 };
 const dood = (k, col) => `<svg viewBox="0 0 64 64" width="36" height="36" fill="none" stroke="${col}" stroke-width="5" stroke-linecap="round" stroke-linejoin="round">${DOODLE[k]}</svg>`;
 // кривой кружок узла
@@ -115,19 +127,16 @@ function nextTopic(tid) { const o = topicOrder(); const i = o.indexOf(tid); retu
 function chapterOf(tid) { return D.topics.chapters.find(c => c.topics.includes(tid)); }
 function isLastInChapter(tid) { const ch = chapterOf(tid); return ch.topics[ch.topics.length - 1] === tid; }
 
-// Раскладка фактов параграфа по 5 шагам: фиксируется один раз на ученика.
+// Раскладка фактов параграфа по тестам: фиксируется один раз на ученика.
 function layoutFor(tid) {
-  if (state.layouts[tid]) return state.layouts[tid];
+  const n = testsFor(tid);
+  if (state.layouts[tid] && state.layouts[tid].facts.length === n) return state.layouts[tid];
   const facts = D.facts.filter(f => f.topic === tid).map(f => f.id);
   const terms = D.terms.filter(t => t.topic === tid).map(t => t.id);
   const persons = D.persons.filter(p => p.topic === tid).map(p => p.id);
-  const spread = (ids) => { // каждый id в 2–3 шага из 5
-    const steps = [[], [], [], [], []];
-    shuffle(ids).forEach((id, i) => {
-      const n = ids.length <= 6 ? 3 : 2;
-      const starts = pick([0, 1, 2, 3, 4], n);
-      starts.forEach(k => steps[k].push(id));
-    });
+  const spread = (ids) => { // каждый id в ~3 теста из n (все тесты — если их 3)
+    const steps = Array.from({ length: n }, () => []);
+    shuffle(ids).forEach(id => pick([...Array(n).keys()], Math.min(n, REPEATS)).forEach(k => steps[k].push(id)));
     return steps;
   };
   const lay = { facts: spread(facts), terms: spread(terms), persons: spread(persons) };
@@ -137,12 +146,15 @@ function layoutFor(tid) {
 const stepKey = (tid, i) => `${tid}:${i}`;
 function stepBest(tid, i) { return (state.steps[stepKey(tid, i)] || {}).best || 0; }
 function stepDone(tid, i) { return stepBest(tid, i) >= 70; }
-function nodeOpen(tid, idx) { // индекс в STEP_PLAN
-  if (STEP_PLAN[idx] === 'chest') return true;
-  for (let k = 0; k < idx; k++) if (STEP_PLAN[k] !== 'chest' && !stepDone(tid, k)) return false;
+function nodeOpen(tid, idx) { // индекс в plan
+  const plan = planFor(tid);
+  if (plan[idx] === 'chest') return true;
+  for (let k = 0; k < idx; k++) if (plan[k] !== 'chest' && !stepDone(tid, k)) return false;
   return true;
 }
-function topicDone(tid) { return STEP_PLAN.every((k, i) => k === 'chest' || stepDone(tid, i)); }
+function topicDone(tid) { return planFor(tid).every((k, i) => k === 'chest' || stepDone(tid, i)); }
+function stepNoOf(tid, idx) { return planFor(tid).slice(0, idx).filter(x => x === 'step').length; } // 0-based номер теста
+function topicProgress(tid) { const p = planFor(tid); const all = p.map((k, i) => [k, i]).filter(([k]) => k !== 'chest'); return [all.filter(([, i]) => stepDone(tid, i)).length, all.length]; }
 
 function currentTopic() {
   if (state.current && D.topicById[state.current]) return state.current;
@@ -157,37 +169,39 @@ function renderHome() {
   const dailyPool = dailyFacts();
   const ready = dailyPool.length >= 3;
   $('daily').classList.toggle('off', !ready);
-  $('daily-sub').textContent = ready ? '5 заданий из подзабытого' : 'появится после первого шага';
+  $('daily-sub').textContent = ready ? '5 заданий из подзабытого' : 'появится после первого теста';
   $('daily-btn').disabled = !ready;
   $('topic-pill-para').textContent = `Глава ${ch.id} · ${t.paragraph}`;
   $('topic-pill-title').textContent = t.title;
   $('hearts-home').innerHTML = heartsHTML(state.hearts);
 
   const box = $('map'); box.innerHTML = ''; sprinkle(box, 10, topicOrder().indexOf(tid) + 3);
-  let currentIdx = STEP_PLAN.findIndex((k, i) => k !== 'chest' && !stepDone(tid, i));
-  if (currentIdx < 0) currentIdx = STEP_PLAN.length;
+  const plan = planFor(tid);
+  let currentIdx = plan.findIndex((k, i) => k !== 'chest' && !stepDone(tid, i));
+  if (currentIdx < 0) currentIdx = plan.length;
   let stepNo = 0;
-  STEP_PLAN.forEach((kind, idx) => {
+  plan.forEach((kind, idx) => {
     const row = document.createElement('div');
-    row.className = 'node-row ' + (['l', 'c', 'r', 'c', 'l', 'c', 'r'][idx]);
+    row.className = 'node-row ' + LANES[idx];
     const b = document.createElement('button');
     const open = nodeOpen(tid, idx) && !(kind === 'chest' && !prevTopic(tid));
     const best = stepBest(tid, idx);
     b.className = `node ${kind}` + (open ? '' : ' locked') + (idx === currentIdx ? ' current' : '') + (best >= 70 ? ' done' : '');
     b.disabled = !open;
     let icon = 'star', label = '';
-    if (kind === 'step') { stepNo++; icon = best >= 70 ? 'check' : 'star'; label = `Шаг ${stepNo}`; }
+    if (kind === 'intro') { icon = best >= 70 ? 'check' : 'book'; label = 'Знакомство'; }
+    if (kind === 'step') { stepNo++; icon = best >= 70 ? 'check' : 'star'; label = `Тест ${stepNo}`; }
     if (kind === 'chest') { icon = 'chest'; label = prevTopic(tid) ? `Сундук: ${D.topicById[prevTopic(tid)].paragraph}` : 'Сундук<br><span class="small muted">со следующего параграфа</span>'; }
     if (kind === 'exam') { icon = best >= 70 ? 'trophy' : 'exam'; label = 'Контрольная'; }
     if (!open) icon = 'lock';
-    const col = !open ? '#9aa0a6' : best >= 70 ? '#3FA66A' : kind === 'chest' ? '#c48a00' : kind === 'exam' ? '#7c5cff' : '#1F3FBF';
+    const col = !open ? '#9aa0a6' : best >= 70 ? '#3FA66A' : kind === 'chest' ? '#c48a00' : kind === 'exam' ? '#7c5cff' : kind === 'intro' ? '#1e2235' : '#1F3FBF';
     b.innerHTML = `${wobble(col, open ? '#ffffff' : '#f0f0ec')}<span class="node-icon">${dood(icon, col)}</span>`;
-    if (idx > 0) { const path = document.createElement('div'); path.className = 'trail'; path.innerHTML = trailSVG(['l','c','r','c','l','c','r'][idx-1], ['l','c','r','c','l','c','r'][idx]); row.appendChild(path); }
-    b.onclick = () => kind === 'step' ? startStep(tid, idx) : kind === 'chest' ? startChest(tid) : startTopicExam(tid);
+    if (idx > 0) { const path = document.createElement('div'); path.className = 'trail'; path.innerHTML = trailSVG(LANES[idx-1], LANES[idx]); row.appendChild(path); }
+    b.onclick = () => kind === 'intro' ? openCards(tid, idx) : kind === 'step' ? startStep(tid, idx) : kind === 'chest' ? startChest(tid) : startTopicExam(tid);
     row.appendChild(b);
     const cap = document.createElement('div');
     cap.className = 'node-cap';
-    cap.innerHTML = `${label}${best ? `<br><span class="small muted">${best}%</span>` : ''}`;
+    cap.innerHTML = `${label}${best && kind !== 'intro' ? `<br><span class="small muted">${best}%</span>` : ''}`;
     row.appendChild(cap);
     if (idx === currentIdx) {
       const c = document.createElement('div'); c.className = 'mascot';
@@ -216,9 +230,9 @@ function renderTopicPicker() {
     const h = document.createElement('div'); h.className = 'picker-ch'; h.innerHTML = `<span>Глава ${ch.id}</span> ${esc(ch.title)}`; frame.appendChild(h);
     for (const tid of ch.topics) {
       const t = D.topicById[tid];
-      const done = STEP_PLAN.filter((k, i) => k !== 'chest' && stepDone(tid, i)).length;
+      const [done, total] = topicProgress(tid);
       const b = document.createElement('button'); b.className = 'picker-item' + (tid === state.current ? ' active' : '') + (topicDone(tid) ? ' done' : '');
-      const boxes = Array.from({ length: 6 }, (_, i) => `<span class="tick ${i < done ? 'on' : ''}"></span>`).join('');
+      const boxes = Array.from({ length: total }, (_, i) => `<span class="tick ${i < done ? 'on' : ''}"></span>`).join('');
       const who = ['opti', 'nik', 'dushka'][ch.topics.indexOf(tid) % 3];
       b.innerHTML = `<div class="picker-char">${charSVG(who, topicDone(tid) ? 'happy' : 'idle', tid, 34)}</div>
         <div class="picker-body"><div class="picker-para">${esc(t.paragraph)}</div><div class="picker-title">${esc(t.title)}</div><div class="ticks">${boxes}${topicDone(tid) ? '<span class="small" style="color:var(--ok)">готово</span>' : ''}</div></div>`;
@@ -289,24 +303,43 @@ $('boss-next').onclick = () => { const chId = $('boss-title').dataset.ch; const 
 
 // ---------- карточки перед уроком ----------
 let cards = null;
-function openCards(tid, idx) {
-  const lay = layoutFor(tid); const k = STEP_PLAN.slice(0, idx).filter(x => x !== 'chest').length;
-  const ids = lay.facts[k] && lay.facts[k].length ? lay.facts[k] : D.facts.filter(f => f.topic === tid).map(f => f.id);
-  cards = { tid, idx, i: 0, flipped: false, facts: ids.map(id => D.factById[id]) };
-  $('cards-title').textContent = `${D.topicById[tid].paragraph} · Шаг ${k + 1}`;
+function openCards(tid, idx, peek = false) {
+  const t = D.topicById[tid];
+  const cardsOf = (facts, terms, persons) => [
+    ...facts.map(f => ({ front: f.date, back: f.event, kind: 'дата' })),
+    ...terms.map(x => ({ front: x.term, back: x.definition, kind: 'термин' })),
+    ...persons.map(x => ({ front: x.name, back: x.who, kind: 'кто это' })),
+  ];
+  let list;
+  if (peek) { // перед тестом: только материал этого теста
+    const lay = layoutFor(tid), k = stepNoOf(tid, idx), p = topicPool(tid);
+    const sub = (all, ids) => { const s = all.filter(x => ids.includes(x.id)); return s.length ? s : all; };
+    list = cardsOf(sub(p.facts, lay.facts[k]), sub(p.terms, lay.terms[k]), sub(p.persons, lay.persons[k]));
+  } else list = cardsOf(D.facts.filter(f => f.topic === tid), D.terms.filter(x => x.topic === tid), D.persons.filter(x => x.topic === tid));
+  cards = { tid, idx, peek, i: 0, flipped: false, list, seen: new Set([0]) };
+  $('cards-title').textContent = peek ? `${t.paragraph} · перед тестом ${stepNoOf(tid, idx) + 1}` : `${t.paragraph} · Знакомство`;
+  $('cards-sub').textContent = peek ? 'Освежи память и жми «Начать тест».' : `${list.length} карточек: даты, термины, имена. Нажми, чтобы перевернуть. Долистай до конца — и откроется первый тест.`;
+  $('cards-start').textContent = peek ? 'Начать тест' : 'Я все посмотрел';
+  $('cards-start').disabled = !peek;
   renderCard();
   show('screen-cards');
 }
 function renderCard() {
-  const f = cards.facts[cards.i];
-  $('flip-front').innerHTML = cards.flipped ? `<div class="small muted">${esc(f.date)}</div><div>${esc(f.event)}</div>` : `<div class="date">${esc(f.date)}</div><div class="small muted">нажми</div>`;
+  const f = cards.list[cards.i];
+  $('flip-front').innerHTML = cards.flipped ? `<div class="small muted">${esc(f.front)}</div><div>${esc(f.back)}</div>` : `<div class="date">${esc(f.front)}</div><div class="small muted">${f.kind} · нажми</div>`;
   $('flip').classList.toggle('back', cards.flipped);
-  $('cards-count').textContent = `${cards.i + 1} / ${cards.facts.length}`;
+  $('cards-count').textContent = `${cards.i + 1} / ${cards.list.length}`;
+  if (!cards.peek && cards.seen.size === cards.list.length) $('cards-start').disabled = false;
 }
 $('flip').onclick = () => { cards.flipped = !cards.flipped; renderCard(); };
-$('cards-prev').onclick = () => { cards.i = (cards.i - 1 + cards.facts.length) % cards.facts.length; cards.flipped = false; renderCard(); };
-$('cards-next').onclick = () => { cards.i = (cards.i + 1) % cards.facts.length; cards.flipped = false; renderCard(); };
-$('cards-start').onclick = () => runStep(cards.tid, cards.idx);
+$('cards-prev').onclick = () => { cards.i = (cards.i - 1 + cards.list.length) % cards.list.length; cards.flipped = false; cards.seen.add(cards.i); renderCard(); };
+$('cards-next').onclick = () => { cards.i = (cards.i + 1) % cards.list.length; cards.flipped = false; cards.seen.add(cards.i); renderCard(); };
+$('cards-start').onclick = () => {
+  if (cards.peek) return runStep(cards.tid, cards.idx);
+  // знакомство пройдено
+  const key = stepKey(cards.tid, cards.idx); state.steps[key] = { best: 100, rounds: ((state.steps[key] || {}).rounds || 0) + 1 }; save();
+  renderHome(); show('screen-home');
+};
 $('cards-home').onclick = () => { renderHome(); show('screen-home'); };
 
 // ---------- генераторы заданий ----------
@@ -518,11 +551,11 @@ function topicPool(tid) {
     causes: D.causes.filter(x => x.topic === tid), cloze: D.cloze.filter(x => x.topic === tid), tf: D.truefalse.filter(x => x.topic === tid) };
 }
 function buildStep(tid, idx) {
-  const k = STEP_PLAN.slice(0, idx).filter(x => x !== 'chest').length; // 0..4
+  const k = stepNoOf(tid, idx);
   const lay = layoutFor(tid), p = topicPool(tid);
   const sub = (all, ids) => { const s = all.filter(x => ids.includes(x.id)); return s.length ? s : all; };
   const pool = { ...p, facts: sub(p.facts, lay.facts[k]), terms: sub(p.terms, lay.terms[k]), persons: sub(p.persons, lay.persons[k]) };
-  return buildTasksFrom(pool, STEP_MECH[k]);
+  return buildTasksFrom(pool, STEP_MECH[k % STEP_MECH.length]);
 }
 function buildChest(tid) {
   const pt = prevTopic(tid);
@@ -580,14 +613,14 @@ function startRun(kind, tasks, meta) {
   show('screen-task');
   renderTask();
 }
-function startStep(tid, idx) { openCards(tid, idx); }
-function runStep(tid, idx) { const k = STEP_PLAN.slice(0, idx).filter(x => x !== 'chest').length; startRun('step', buildStep(tid, idx), { tid, idx, intro: `${D.topicById[tid].paragraph}, шаг ${k + 1}. ${LESSON_LEN} заданий.` }); }
+function startStep(tid, idx) { openCards(tid, idx, true); }
+function runStep(tid, idx) { const k = stepNoOf(tid, idx); startRun('step', buildStep(tid, idx), { tid, idx, intro: `${D.topicById[tid].paragraph}, тест ${k + 1}. ${LESSON_LEN} заданий.` }); }
 function startChest(tid) {
   const pt = prevTopic(tid);
   if (!pt) { alert('Это первый параграф курса, сундук откроется со следующего.'); return; }
-  startRun('chest', buildChest(tid), { tid, idx: STEP_PLAN.indexOf('chest'), intro: `Сундук: вспоминаем ${D.topicById[pt].paragraph}. За 70% — сердце на босса.` });
+  startRun('chest', buildChest(tid), { tid, idx: planFor(tid).indexOf('chest'), intro: `Сундук: вспоминаем ${D.topicById[pt].paragraph}. За 70% — сердце на босса.` });
 }
-function startTopicExam(tid) { startRun('exam', buildTopicExam(tid), { tid, idx: STEP_PLAN.indexOf('exam'), intro: `Контрольная по ${D.topicById[tid].paragraph}. Как учитель спросит.` }); }
+function startTopicExam(tid) { startRun('exam', buildTopicExam(tid), { tid, idx: planFor(tid).indexOf('exam'), intro: `Контрольная по ${D.topicById[tid].paragraph}. Как учитель спросит.` }); }
 function startBoss(chId, level) {
   const ch = D.topics.chapters.find(c => c.id === chId);
   const intro = level === 3 ? `Босс. Даты с клавиатуры, жизней: ${Math.max(1, state.hearts)}.` : `Глава ${ch.id}, уровень ${level}: ${BOSS_LEVELS[level - 1].title}.`;
@@ -654,7 +687,7 @@ function finishRun(lost) {
     const { tid, idx } = run.meta;
     const key = stepKey(tid, idx), prev = state.steps[key] || { best: 0, rounds: 0 };
     state.steps[key] = { best: Math.max(prev.best, pct), rounds: prev.rounds + 1 };
-    const name = run.kind === 'step' ? 'Шаг' : run.kind === 'exam' ? 'Контрольная' : 'Сундук';
+    const name = run.kind === 'step' ? 'Тест' : run.kind === 'exam' ? 'Контрольная' : 'Сундук';
     if (run.kind === 'chest' && passed && !prev.rewarded) { state.hearts = Math.min(3, state.hearts + 1); state.steps[key].rewarded = true; }
     else if (prev.rewarded) state.steps[key].rewarded = true;
     title = pct === 100 ? 'Все верно. Серьезно, все.' : passed ? `${pct}%. ${name} пройден${run.kind === 'exam' ? 'а' : ''}.` : `${pct}%. Нужно 70. Ошибки запомнил, спрошу их первыми.`;
