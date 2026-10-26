@@ -34,7 +34,8 @@ dump("cloze.json", [{"id": int(r["id"]), "topic": str(r["topic"]), "text": r["te
 dump("truefalse.json", [{"id": int(r["id"]), "topic": str(r["topic"]), "statement": r["statement"], "isTrue": r["is_true"] == "да", "note": r["note"]} for r in rows("Правда-ложь")])
 dump("lessons.json", [{"id": int(r["id"]), "topic": str(r["topic"]), "title": r["title"], "factIds": [int(x) for x in str(r["fact_ids"]).split(",")]} for r in rows("Уроки")])
 
-topics = json.load(open(os.path.join(ROOT, "topics.json"), encoding="utf-8"))
+topics = {"course": "История Средних веков, 6 класс (Мединский, Чубарьян, 2025)",
+          "topics": [{"id": str(r["id"]), "paragraph": r["paragraph"], "chapter": r["chapter"], "title": r["title"], "block": r["block"]} for r in rows("Параграфы")]}
 topics["chapters"] = [{"id": r["chapter"], "title": r["title"], "topics": r["topics"].split(",")} for r in rows("Главы")]
 with open(os.path.join(ROOT, "topics.json"), "w", encoding="utf-8") as f:
     json.dump(topics, f, ensure_ascii=False, indent=1)

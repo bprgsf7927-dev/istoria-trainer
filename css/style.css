@@ -250,3 +250,7 @@ body { background-image: repeating-linear-gradient(0deg, transparent 0 27px, #e9
 
 .node .crown { position: absolute; top: -22px; left: 50%; transform: translateX(-50%) rotate(-8deg); }
 .ticks .crown { width: 30px; height: 19px; margin-left: 4px; }
+
+.map-info { align-self: center; flex: none; width: 26px; height: 26px; font-size: 18px; }
+.node-cap { min-height: 10px; font-size: 18px; }
+.node-row { min-height: 110px; }

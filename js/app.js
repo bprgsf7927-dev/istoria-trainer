@@ -101,7 +101,7 @@ const heartsHTML = (n, max = 3) => Array.from({ length: max }, (_, i) => HEART(i
 const DOODLE = {
   star:  '<path d="M32 8l7 16l17 2l-13 11l5 17l-16-9l-16 9l5-17l-13-11l17-2z"/>',
   check: '<path d="M14 34l12 12l26-28"/>',
-  chest: '<path d="M10 28q22-14 44 0v22q-22 8-44 0z"/><path d="M10 28h44M30 28v10l4-2v-8"/>',
+  chest: '<path d="M8 26q24-20 48 0l1 26H7z"/><path d="M8 26h48"/><path d="M20 26v-12M44 26v-12"/><path d="M28 32h8v8h-8z"/><path d="M32 36v4"/><path d="M8 40h48"/>',
   exam:  '<path d="M18 8h22l10 10v38H18z"/><path d="M24 30h20M24 40h14M40 8v10h10"/>',
   trophy:'<path d="M20 10h24v14q0 14-12 14t-12-14z"/><path d="M20 14q-10 0-8 10q2 8 10 8M44 14q10 0 8 10q-2 8-10 8M32 38v10M22 50h20"/>',
   boss:  '<path d="M16 44q-6-26 16-32q22 6 16 32z"/><path d="M22 20l-8-10M42 20l8-10M26 28q3-4 6 0M38 28q3-4 6 0M24 40q8-6 16 0"/>',
@@ -171,7 +171,7 @@ function renderHome() {
   const dailyPool = dailyFacts();
   const ready = dailyPool.length >= 3;
   $('daily').classList.toggle('off', !ready);
-  $('daily-sub').textContent = ready ? '5 заданий из подзабытого' : 'появится после первого теста';
+  $('daily-sub').textContent = ready ? '5 заданий из подзабытого' : 'появится после первой тренировки';
   $('daily-btn').disabled = !ready;
   $('topic-pill-para').textContent = `Глава ${ch.id} · ${t.paragraph}`;
   $('topic-pill-title').textContent = t.title;
@@ -191,10 +191,10 @@ function renderHome() {
     b.className = `node ${kind}` + (open ? '' : ' locked') + (idx === currentIdx ? ' current' : '') + (best >= 70 ? ' done' : '');
     b.disabled = !open;
     let icon = 'star', label = '';
-    if (kind === 'intro') { icon = best >= 70 ? 'check' : 'book'; label = 'Знакомство'; }
-    if (kind === 'step') { stepNo++; icon = best >= 70 ? 'check' : 'star'; label = `Тест ${stepNo}`; }
-    if (kind === 'chest') { icon = 'chest'; label = prevTopic(tid) ? `Сундук: ${D.topicById[prevTopic(tid)].paragraph}` : 'Сундук<br><span class="small muted">со следующего параграфа</span>'; }
-    if (kind === 'exam') { icon = best >= 70 ? 'trophy' : 'exam'; label = 'Контрольная'; }
+    if (kind === 'intro') { icon = best >= 70 ? 'check' : 'book'; }
+    if (kind === 'step') { stepNo++; icon = best >= 70 ? 'check' : 'star'; }
+    if (kind === 'chest') { icon = 'chest'; label = prevTopic(tid) ? `${D.topicById[prevTopic(tid)].paragraph}` : '<span class="small muted">со следующего параграфа</span>'; }
+    if (kind === 'exam') { icon = best >= 70 ? 'trophy' : 'exam'; }
     if (!open) icon = 'lock';
     const col = !open ? '#9aa0a6' : best >= 70 ? '#3FA66A' : kind === 'chest' ? '#c48a00' : kind === 'exam' ? '#7c5cff' : kind === 'intro' ? '#1e2235' : '#1F3FBF';
     b.innerHTML = `${wobble(col, open ? '#ffffff' : '#f0f0ec')}<span class="node-icon">${dood(icon, col)}</span>${best === 100 && kind !== 'intro' ? CROWN() : ''}`;
@@ -203,7 +203,7 @@ function renderHome() {
     row.appendChild(b);
     const cap = document.createElement('div');
     cap.className = 'node-cap';
-    cap.innerHTML = `${label}${best && kind !== 'intro' ? `<br><span class="small muted">${best}%</span>` : ''}`;
+    cap.innerHTML = `${label}${best && kind !== 'intro' ? `<span class="small muted">${best}%</span>` : ''}`;
     row.appendChild(cap);
     if (idx === currentIdx) {
       const c = document.createElement('div'); c.className = 'mascot';
@@ -320,9 +320,9 @@ function openCards(tid, idx, peek = false) {
     list = cardsOf(sub(p.facts, lay.facts[k]), sub(p.terms, lay.terms[k]), sub(p.persons, lay.persons[k]));
   } else list = cardsOf(D.facts.filter(f => f.topic === tid), D.terms.filter(x => x.topic === tid), D.persons.filter(x => x.topic === tid));
   cards = { tid, idx, peek, i: 0, flipped: false, list, seen: new Set([0]) };
-  $('cards-title').textContent = peek ? `${t.paragraph} · перед тестом ${stepNoOf(tid, idx) + 1}` : `${t.paragraph} · Знакомство`;
-  $('cards-sub').textContent = peek ? 'Освежи память и жми «Начать тест».' : `${list.length} карточек: даты, термины, имена. Нажми, чтобы перевернуть. Долистай до конца — и откроется первый тест.`;
-  $('cards-start').textContent = peek ? 'Начать тест' : 'Я все посмотрел';
+  $('cards-title').textContent = peek ? `${t.paragraph} · освежить память` : `${t.paragraph} · Знакомство`;
+  $('cards-sub').textContent = peek ? 'Только то, что будет в этой тренировке.' : `${list.length} карточек: даты, термины, имена. Нажми, чтобы перевернуть. Долистай до конца — и откроется первая тренировка.`;
+  $('cards-start').textContent = peek ? 'Поехали' : 'Я все посмотрел';
   $('cards-start').disabled = !peek;
   renderCard();
   show('screen-cards');
@@ -331,7 +331,8 @@ function renderCard() {
   const f = cards.list[cards.i];
   $('flip-front').innerHTML = cards.flipped ? `<div class="small muted">${esc(f.front)}</div><div>${esc(f.back)}</div>` : `<div class="date">${esc(f.front)}</div><div class="small muted">${f.kind} · нажми</div>`;
   $('flip').classList.toggle('back', cards.flipped);
-  $('cards-count').textContent = `${cards.i + 1} / ${cards.list.length}`;
+  const f2 = cards.list[cards.i]; const grp = cards.list.filter(x => x.kind === f2.kind); const gi = grp.indexOf(f2) + 1;
+  $('cards-count').innerHTML = `<b>${esc(f2.kind)}</b> ${gi}/${grp.length} <span class="muted">· всего ${cards.i + 1}/${cards.list.length}</span>`;
   if (!cards.peek && cards.seen.size === cards.list.length) $('cards-start').disabled = false;
 }
 $('flip').onclick = () => { cards.flipped = !cards.flipped; renderCard(); };
@@ -617,7 +618,7 @@ function startRun(kind, tasks, meta) {
   renderTask();
 }
 function startStep(tid, idx) { openCards(tid, idx, true); }
-function runStep(tid, idx) { const k = stepNoOf(tid, idx); startRun('step', buildStep(tid, idx), { tid, idx, intro: `${D.topicById[tid].paragraph}, тест ${k + 1}. ${LESSON_LEN} заданий.` }); }
+function runStep(tid, idx) { const k = stepNoOf(tid, idx); startRun('step', buildStep(tid, idx), { tid, idx, intro: `${D.topicById[tid].paragraph}, ${['первая','вторая','третья','четвертая','пятая','шестая','седьмая','восьмая'][k] || (k + 1) + '-я'} тренировка. ${LESSON_LEN} заданий.` }); }
 function startChest(tid) {
   const pt = prevTopic(tid);
   if (!pt) { alert('Это первый параграф курса, сундук откроется со следующего.'); return; }
@@ -690,7 +691,7 @@ function finishRun(lost) {
     const { tid, idx } = run.meta;
     const key = stepKey(tid, idx), prev = state.steps[key] || { best: 0, rounds: 0 };
     state.steps[key] = { best: Math.max(prev.best, pct), rounds: prev.rounds + 1 };
-    const name = run.kind === 'step' ? 'Тест' : run.kind === 'exam' ? 'Контрольная' : 'Сундук';
+    const name = run.kind === 'step' ? 'Тренировка' : run.kind === 'exam' ? 'Контрольная' : 'Сундук';
     if (run.kind === 'chest' && passed && !prev.rewarded) { state.hearts = Math.min(3, state.hearts + 1); state.steps[key].rewarded = true; }
     else if (prev.rewarded) state.steps[key].rewarded = true;
     title = pct === 100 ? 'Все верно. Корона твоя.' : passed ? `${pct}%. ${name} пройден${run.kind === 'exam' ? 'а' : ''}.` : `${pct}%. Нужно 70. Ошибки запомнил, спрошу их первыми.`;
@@ -715,6 +716,8 @@ function finishRun(lost) {
   $('result-title').textContent = title;
   $('result-text').textContent = text;
   $('result-xp').textContent = run.xp ? `+${run.xp} XP` : '';
+  const failedStep = run.kind === 'step' && !passed;
+  $('cards-btn').classList.toggle('hidden', !failedStep);
   show('screen-result');
 }
 
@@ -724,6 +727,7 @@ $('check-btn').onclick = () => {};
 $('quit').onclick = () => { if (confirm('Выйти? Прогресс этого раунда не сохранится.')) { renderHome(); show('screen-home'); } };
 $('again-btn').onclick = () => run.kind === 'step' ? runStep(run.meta.tid, run.meta.idx) : run.kind === 'chest' ? startChest(run.meta.tid) : run.kind === 'exam' ? startTopicExam(run.meta.tid) : run.kind === 'boss' ? startBoss(run.meta.chapter.id, run.meta.level) : startDaily();
 $('home-btn').onclick = () => { if (run && run.kind === 'boss') return renderBoss(run.meta.chapter.id); renderHome(); show('screen-home'); };
+$('cards-btn').onclick = () => openCards(run.meta.tid, run.meta.idx, true);
 $('brand').onclick = () => { if (!$('screen-task').classList.contains('hidden')) return $('quit').onclick(); if (!$('screen-home').classList.contains('hidden')) { renderWelcome(); show('screen-welcome'); } else { renderHome(); show('screen-home'); } };
 $('daily-btn').onclick = startDaily;
 // подсказки по значкам
@@ -731,6 +735,7 @@ const HINTS = {
   xp: ['Звезды', 'Опыт. 10 за каждое верное задание, 5 за «почти». Просто растут — это приятно.'],
   streak: ['Огонек', 'Дней подряд, когда ты заходил и проходил хотя бы один шаг. Пропустил день — сгорает.'],
   hearts: ['Сердца', 'Жизни на третьем уровне босса. Дает сундук: пройди тест по прошлому параграфу на 70%. Максимум три, после босса сгорают.'],
+  nodes: ['Что на карте', 'Книжка — знакомство с материалом, просто полистать. Звезда — тренировка на 8 заданий. Сундук — повторение прошлого параграфа, дает сердце. Лист — контрольная по параграфу, как спросит учитель. Пройдено от 70%, корона за 100%.'],
   crown: ['Корона', 'За 100% на тесте или контрольной. Любой тест можно пройти заново и добрать до короны. Собрал короны на всех тестах параграфа — корона в списке параграфов.'],
   daily: ['Микс дня', '5 заданий из того, в чем ты ошибался, и того, что давно не повторял. Собирается заново каждый день.'],
 };
@@ -740,6 +745,7 @@ document.querySelector('.hearts-home').onclick = () => showHint('hearts');
 $('daily-info').onclick = (e) => { e.stopPropagation(); showHint('daily'); };
 $('hint').onclick = () => $('hint').classList.add('hidden');
 document.addEventListener('click', (e) => { if (e.target.closest('.crown')) { e.stopPropagation(); showHint('crown'); } }, true);
+$('map-info').onclick = () => showHint('nodes');
 
 const DECOR = [
   '<path d="M6 30q10-26 24-4q8-22 20 0q10-18 18 2" />',                                         // облачко
