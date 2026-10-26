@@ -208,12 +208,15 @@ function renderHome() {
 function renderTopicPicker() {
   const box = $('picker-list'); box.innerHTML = '';
   for (const ch of D.topics.chapters) {
-    const h = document.createElement('div'); h.className = 'picker-ch'; h.textContent = `Глава ${ch.id}. ${ch.title}`; box.appendChild(h);
+    const h = document.createElement('div'); h.className = 'picker-ch'; h.innerHTML = `<span>Глава ${ch.id}</span> ${esc(ch.title)}`; box.appendChild(h);
     for (const tid of ch.topics) {
       const t = D.topicById[tid];
       const done = STEP_PLAN.filter((k, i) => k !== 'chest' && stepDone(tid, i)).length;
-      const b = document.createElement('button'); b.className = 'card picker-item' + (tid === state.current ? ' active' : '');
-      b.innerHTML = `<span class="para">${esc(t.paragraph)}</span> ${esc(t.title)}<div class="small muted">${done} из 6 ${topicDone(tid) ? '✓' : ''}</div>`;
+      const b = document.createElement('button'); b.className = 'picker-item' + (tid === state.current ? ' active' : '') + (topicDone(tid) ? ' done' : '');
+      const boxes = Array.from({ length: 6 }, (_, i) => `<span class="tick ${i < done ? 'on' : ''}"></span>`).join('');
+      const who = ['opti', 'nik', 'dushka'][ch.topics.indexOf(tid) % 3];
+      b.innerHTML = `<div class="picker-char">${charSVG(who, topicDone(tid) ? 'happy' : 'idle', tid, 34)}</div>
+        <div class="picker-body"><div class="picker-para">${esc(t.paragraph)}</div><div class="picker-title">${esc(t.title)}</div><div class="ticks">${boxes}${topicDone(tid) ? '<span class="small" style="color:var(--ok)">готово</span>' : ''}</div></div>`;
       b.onclick = () => { state.current = tid; save(); $('picker').classList.add('hidden'); renderHome(); };
       box.appendChild(b);
     }
