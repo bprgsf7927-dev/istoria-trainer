@@ -211,7 +211,7 @@ function renderTopicPicker() {
       const who = ['opti', 'nik', 'dushka'][ch.topics.indexOf(tid) % 3];
       b.innerHTML = `<div class="picker-char">${charSVG(who, topicDone(tid) ? 'happy' : 'idle', tid, 34)}</div>
         <div class="picker-body"><div class="picker-para">${esc(t.paragraph)}</div><div class="picker-title">${esc(t.title)}</div><div class="ticks">${boxes}${topicDone(tid) ? '<span class="small" style="color:var(--ok)">готово</span>' : ''}</div></div>`;
-      b.onclick = () => { state.current = tid; save(); $('picker').classList.add('hidden'); renderHome(); };
+      b.onclick = () => { state.current = tid; save(); togglePicker(false); renderHome(); };
       frame.appendChild(b);
     }
     // босс главы — отдельной карточкой
@@ -221,12 +221,23 @@ function renderTopicPicker() {
     bb.innerHTML = `<div class="picker-char">${BOSS_HOUSE[ch.id] || BOSS_HOUSE.VI}</div>
       <div class="picker-body"><div class="picker-para">Босс</div><div class="picker-title">Босс главы ${ch.id}</div>
       <div class="ticks">${[0,1,2].map(i => `<span class="tick ${i < lv ? 'on' : ''}"></span>`).join('')}<span class="small muted">${open ? (bs.won ? 'повержен' : 'три уровня') : 'пройди все параграфы'}</span></div></div>`;
-    bb.onclick = () => { if (!open) return; $('picker').classList.add('hidden'); renderBoss(ch.id); };
+    bb.onclick = () => { if (!open) return; togglePicker(false); renderBoss(ch.id); };
     frame.appendChild(bb);
   }
 }
-$('topic-pill').onclick = () => { renderTopicPicker(); $('picker').classList.toggle('hidden'); };
-$('picker-close').onclick = () => $('picker').classList.add('hidden');
+const PICKER_FOOT = [
+  'Два раздела, два босса. Кто дойдет до замка — тот знает Средние века лучше учителя. Ну, почти.',
+  'Каждый параграф — это 6 шагов по три минуты. Вся книга — меньше, чем один сезон сериала.',
+  'Где-то внизу этого списка — 1492 год. Колумб доплыл, доплывешь и ты.',
+];
+function togglePicker(open) {
+  $('picker').classList.toggle('hidden', !open);
+  $('map').classList.toggle('hidden', open);
+  document.querySelector('.home-row').classList.toggle('hidden', open);
+  if (open) { renderTopicPicker(); $('picker-foot').textContent = PICKER_FOOT[new Date().getDate() % PICKER_FOOT.length]; window.scrollTo(0, 0); }
+}
+$('topic-pill').onclick = () => togglePicker($('picker').classList.contains('hidden'));
+$('picker-close').onclick = () => togglePicker(false);
 
 // ---------- экран босса главы: три уровня ----------
 const BOSS_HOUSE = {

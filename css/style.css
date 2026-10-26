@@ -217,3 +217,5 @@ body { background-image: repeating-linear-gradient(0deg, transparent 0 27px, #e9
 .picker-item.boss.locked .house { stroke: #b9bcb8; }
 .picker-item.boss.done { background: var(--ok-soft); border-color: var(--ok); }
 .picker-item.boss .picker-para { color: #d9480f; }
+
+.picker-foot { font-family: Caveat, cursive; font-size: 22px; line-height: 1.2; text-align: center; color: var(--ink); margin: 6px 12px 20px; transform: rotate(-1deg); }
