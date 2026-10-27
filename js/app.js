@@ -66,6 +66,8 @@ const byTopics = (arr, topics) => arr.filter(x => topics.includes(x.topic));
 function show(id) {
   document.querySelectorAll('.screen').forEach(s => s.classList.add('hidden'));
   $(id).classList.remove('hidden');
+  $('tabs').classList.toggle('hidden', id === 'screen-task' || id === 'screen-welcome');
+  if (id === 'screen-home') renderTabs('map');
   window.scrollTo(0, 0);
 }
 
@@ -204,11 +206,6 @@ function renderHome() {
     cap.className = 'node-cap';
     cap.innerHTML = `${label}${best ? `<span class="small muted">${best}%</span>` : ''}`;
     row.appendChild(cap);
-    if (idx === 0) { // книжка-справочник сбоку от первого узла, без замка
-      const bk = document.createElement('button'); bk.className = 'book-side';
-      bk.innerHTML = `${dood('book', '#1e2235')}<span>весь параграф</span>`;
-      bk.onclick = () => openCards(tid, 0, false); row.appendChild(bk);
-    }
     if (idx === currentIdx) {
       const c = document.createElement('div'); c.className = 'mascot';
       const who = ['opti', 'nik', 'dushka'][idx % 3];
@@ -349,6 +346,7 @@ $('cards-start').onclick = () => {
   renderHome(); show('screen-home');
 };
 $('cards-home').onclick = () => { renderHome(); show('screen-home'); };
+$('soon-back').onclick = () => { renderHome(); show('screen-home'); };
 
 // ---------- генераторы заданий ----------
 // Каждое задание: { kind, render(el), check() -> {ok, half?, answerText}, fact? }
@@ -806,18 +804,50 @@ function finishRun(lost) {
 // ---------- кнопки ----------
 $('next-btn').onclick = next;
 $('check-btn').onclick = () => {};
-$('quit').onclick = () => { if (confirm('Выйти? Прогресс этого раунда не сохранится.')) { renderHome(); show('screen-home'); } };
+function askQuit() {
+  const box = $('hint'); $('hint-title').textContent = 'Бросить тренировку?';
+  $('hint-text').innerHTML = `<b>Ник:</b> Если уйдешь сейчас, прогресс этой тренировки сгорит. Осталось совсем немного.<div class="row"><button class="btn" id="quit-yes">Все равно уйти</button><button class="btn primary" id="quit-no">Остаюсь</button></div>`;
+  box.classList.remove('hidden');
+  $('quit-no').onclick = (e) => { e.stopPropagation(); box.classList.add('hidden'); };
+  $('quit-yes').onclick = (e) => { e.stopPropagation(); box.classList.add('hidden'); renderHome(); show('screen-home'); };
+}
 $('again-btn').onclick = () => run.kind === 'step' ? runStep(run.meta.tid, run.meta.idx) : run.kind === 'chest' ? startChest(run.meta.tid) : run.kind === 'exam' ? startTopicExam(run.meta.tid) : run.kind === 'boss' ? startBoss(run.meta.chapter.id, run.meta.level) : startDaily();
 $('home-btn').onclick = () => { if (run && run.kind === 'boss') return renderBoss(run.meta.chapter.id); renderHome(); show('screen-home'); };
 $('cards-btn').onclick = () => openCards(run.meta.tid, run.meta.idx, true);
-$('brand').onclick = () => { if (!$('screen-task').classList.contains('hidden')) return $('quit').onclick(); if (!$('screen-home').classList.contains('hidden')) { renderWelcome(); show('screen-welcome'); } else { renderHome(); show('screen-home'); } };
 $('daily-btn').onclick = startDaily;
+// нижняя панель
+const TAB_ICON = {
+  map:    '<path d="M8 50l14-10l12 8l14-12l12 8" /><path d="M8 50v-36l14-10l12 8l14-12l12 8v36" />',
+  cabinet:'<path d="M32 10q-12 0-12 12t12 12t12-12t-12-12z"/><path d="M12 56q0-18 20-18t20 18"/>',
+  events: '<path d="M12 16h40v38H12z"/><path d="M12 28h40M22 10v10M42 10v10"/><path d="M22 40l6 6l12-12"/>',
+  book:   '<path d="M10 14q11-4 22 2v34q-11-6-22-2z"/><path d="M32 16q11-6 22-2v34q-11-4-22 2"/>',
+};
+const tabSVG = (k) => `<svg viewBox="0 0 64 64" width="26" height="26" fill="none" stroke="currentColor" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round">${TAB_ICON[k]}</svg>`;
+function renderTabs(active) {
+  const tabs = [['map', 'Карта'], ['book', 'Книжка'], ['events', 'События'], ['cabinet', 'Кабинет']];
+  $('tabs').innerHTML = tabs.map(([k, t]) => `<button class="tab${k === active ? ' active' : ''}" data-tab="${k}">${tabSVG(k)}<span>${t}</span></button>`).join('');
+  $('tabs').querySelectorAll('.tab').forEach(b => b.onclick = () => goTab(b.dataset.tab));
+}
+function goTab(k) {
+  if (!$('screen-task').classList.contains('hidden')) return askQuit();
+  if (k === 'map') { renderHome(); show('screen-home'); }
+  else if (k === 'book') { openCards(currentTopic(), 0, false); }
+  else { renderSoon(k); show('screen-soon'); }
+  renderTabs(k);
+}
+function renderSoon(k) {
+  const who = k === 'events' ? 'nik' : 'dushka';
+  $('soon-pic').innerHTML = charSVG(who, 'idle', null, 90);
+  $('soon-title').textContent = k === 'events' ? 'События' : 'Кабинет';
+  $('soon-text').textContent = k === 'events' ? 'Здесь будут игровые события и календарь: недели эпох, двойной опыт, даты из учебника. Пока строится.' : 'Здесь будут твой профиль, ачивки и рекорды. Появится вместе с аккаунтами.';
+}
+$('brand').onclick = () => { if (!$('screen-task').classList.contains('hidden')) return askQuit(); if (!$('screen-home').classList.contains('hidden')) { renderWelcome(); show('screen-welcome'); } else { renderHome(); show('screen-home'); renderTabs('map'); } };
 // подсказки по значкам
 const HINTS = {
   xp: ['Звезды', 'Опыт. 10 за каждое верное задание, 5 за «почти». Просто растут — это приятно.'],
   streak: ['Огонек', 'Дней подряд, когда ты заходил и проходил хотя бы один шаг. Пропустил день — сгорает.'],
   hearts: ['Сердца', 'Жизни на третьем уровне босса. Дает сундук: пройди тест по прошлому параграфу на 70%. Максимум три, после босса сгорают.'],
-  nodes: ['Что на карте', 'Звезда — тренировка на 8 заданий; в первых тренировках есть «первые встречи» — там нельзя ошибиться по-настоящему. Книжка сбоку — весь параграф карточками, на любой момент. Сундук — повторение прошлого параграфа, дает сердце. Лист — контрольная по параграфу, как спросит учитель. Тренировка не отпускает, пока не ответишь на все: ошибки возвращаются, сначала просто еще раз, потом с подсказкой. Корона — если все верно с первого раза.'],
+  nodes: ['Что на карте', 'Звезда — тренировка на 8 заданий; в первых тренировках есть «первые встречи» — там нельзя ошибиться по-настоящему. Книжка внизу — весь параграф карточками, на любой момент. Сундук — повторение прошлого параграфа, дает сердце. Лист — контрольная по параграфу, как спросит учитель. Тренировка не отпускает, пока не ответишь на все: ошибки возвращаются, сначала просто еще раз, потом с подсказкой. Корона — если все верно с первого раза.'],
   crown: ['Корона', 'За тренировку или контрольную без единой ошибки с первого раза. Любую можно переиграть и добрать до короны. Короны на всех тренировках параграфа — корона в списке.'],
   daily: ['Микс дня', '5 заданий из того, в чем ты ошибался, и того, что давно не повторял. Собирается заново каждый день.'],
 };
@@ -858,5 +888,5 @@ function renderWelcome() {
 $('welcome-start').onclick = () => { state.started = true; save(); renderHome(); show('screen-home'); };
 const hasProgress = () => state.started || Object.keys(state.steps || {}).length > 0;
 
-loadContent().then(() => { renderStats(); renderWelcome(); if (hasProgress()) { renderHome(); show('screen-home'); } else show('screen-welcome'); })
+loadContent().then(() => { renderStats(); renderWelcome(); renderTabs('map'); if (hasProgress()) { renderHome(); show('screen-home'); } else show('screen-welcome'); })
   .catch(e => { $('map').innerHTML = `<p class="muted">Не удалось загрузить контент (${esc(e.message)}). Открой сайт через сервер, а не как файл.</p>`; });
