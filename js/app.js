@@ -106,7 +106,7 @@ const HEART = (on) => { const id = 'hh' + (_hid++); return `<svg viewBox="0 0 32
 const STAR = () => `<svg viewBox="0 0 32 32" width="22" height="22">${HATCH('hs', '#e0a800')}<path d="M16 3l4 9l9 1l-7 6l2 10l-8-5l-8 5l2-10l-7-6l9-1z" fill="url(#hs)" stroke="#1e2235" stroke-width="2.2" stroke-linejoin="round"/></svg>`;
 const FIRE = () => `<svg viewBox="0 0 32 32" width="22" height="22">${HATCH('hf', '#e8641b')}<path d="M16 2q2 7 7 11q5 6 1 13q-4 5-9 4q-7-1-8-8q-1-6 4-10q-1 5 3 6q0-6 2-16z" fill="url(#hf)" stroke="#1e2235" stroke-width="2.2" stroke-linejoin="round"/></svg>`;
 const PIZZA = () => `<svg viewBox="0 0 32 32" width="24" height="24">${HATCH('hp', '#e8a43b')}<path d="M4 6l24 4l-16 20z" fill="url(#hp)" stroke="#1e2235" stroke-width="2.2" stroke-linejoin="round"/><path d="M4 6q14 0 24 4" stroke="#D9480F" stroke-width="3" fill="none"/><circle cx="12" cy="12" r="2" fill="#D9480F"/><circle cx="17" cy="16" r="2" fill="#D9480F"/><circle cx="11" cy="20" r="1.8" fill="#D9480F"/></svg>`;
-const DONATE_URL = ''; // ссылка CloudTips от Алены, вид pay.cloudtips.ru/p/...
+const DONATE_URL = 'https://pay.cloudtips.ru/p/266b3d2a'; // CloudTips, аккаунт Алены
 const heartsHTML = (n, max = 3) => Array.from({ length: max }, (_, i) => HEART(i < n)).join('');
 const DOODLE = {
   star:  '<path d="M32 8l7 16l17 2l-13 11l5 17l-16-9l-16 9l5-17l-13-11l17-2z"/>',
