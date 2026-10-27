@@ -270,3 +270,7 @@ body { background-image: repeating-linear-gradient(0deg, transparent 0 27px, #e9
 main { padding-bottom: 96px; }
 .bottom { padding-bottom: 80px; }
 .taskbar .progress { margin-left: 4px; }
+
+.donate-pic { display: flex; justify-content: center; line-height: 0; margin-bottom: 4px; }
+#pizza { cursor: pointer; }
+.hint-box a.btn { text-decoration: none; display: inline-block; }
