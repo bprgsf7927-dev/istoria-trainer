@@ -870,7 +870,7 @@ $('xp').onclick = () => showHint('xp');
 $('pizza').onclick = () => {
   $('hint-title').textContent = 'Накормить автора пиццей';
   $('hint-text').innerHTML = `<div class="donate-pic">${charSVG('opti', 'happy', null, 70)}</div>
-    <p>Этот тренажер делает школьник по имени Даня — между уроками и домашкой. Если он помог тебе с датами, можно скинуть ему на пиццу в столовой.</p>
+    <p>Этот тренажер делает школьник по имени Даня — между уроками и домашкой. Если он помог тебе с учебой, можно скинуть ему на пиццу в столовой.</p>
     <p class="small muted">Это подарок, а не покупка: ничего не открывает и не ускоряет. Все открыто для всех.</p>
     <div class="row">${DONATE_URL ? `<a class="btn primary" href="${DONATE_URL}" target="_blank" rel="noopener">Скинуть на пиццу</a>` : '<button class="btn primary" disabled>Скоро</button>'}</div>`;
   $('hint').classList.remove('hidden');
