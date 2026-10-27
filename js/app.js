@@ -4,7 +4,6 @@
 
 const SUBJECTS = [
   { id: 'istoria', title: 'Истори-тренажер', course: 'srednie-veka-6', courseTitle: 'Средние века, 6 класс', on: true },
-  { id: 'obshestvo', title: 'Общество-тренажер', course: null, courseTitle: '6 класс', on: false },
   { id: 'geografia', title: 'Гео-тренажер', course: null, courseTitle: '6 класс', on: false },
   { id: 'biologia', title: 'Био-тренажер', course: null, courseTitle: '6 класс', on: false },
 ];
