@@ -1,6 +1,6 @@
 {
   "name": "Истори-тренажер",
-  "short_name": "История",
+  "short_name": "Уроки",
   "start_url": "./",
   "display": "standalone",
   "background_color": "#fbfbf8",
