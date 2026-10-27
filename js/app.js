@@ -2,7 +2,14 @@
    Уроки по 8 заданий, шесть механик, подготовка к контрольной уровнями, микс дня.
    Без сборки и без аккаунтов: прогресс в localStorage (схема v2). */
 
-const COURSE = 'srednie-veka-6';
+const SUBJECTS = [
+  { id: 'istoria', title: 'Истори-тренажер', course: 'srednie-veka-6', courseTitle: 'Средние века, 6 класс', on: true },
+  { id: 'obshestvo', title: 'Общество-тренажер', course: null, courseTitle: '6 класс', on: false },
+  { id: 'geografia', title: 'Гео-тренажер', course: null, courseTitle: '6 класс', on: false },
+  { id: 'biologia', title: 'Био-тренажер', course: null, courseTitle: '6 класс', on: false },
+];
+const SUBJECT = SUBJECTS[0];
+const COURSE = SUBJECT.course;
 const LESSON_LEN = 8;
 const STORE_KEY = 'istoria-trainer-v3';
 const OLD_KEY2 = 'istoria-trainer-v2';
@@ -268,6 +275,12 @@ function togglePicker(open) {
   if (open) { renderTopicPicker(); $('picker-foot').textContent = PICKER_FOOT[new Date().getDate() % PICKER_FOOT.length]; window.scrollTo(0, 0); }
 }
 $('topic-pill').onclick = () => togglePicker($('picker').classList.contains('hidden'));
+function openSubjects() {
+  $('hint-title').textContent = 'Предмет';
+  $('hint-text').innerHTML = `<div class="subjects">${SUBJECTS.map(s => `<div class="subject${s.on ? ' on' : ''}${s.id === SUBJECT.id ? ' active' : ''}"><b>${esc(s.title)}</b><span class="small muted">${s.on ? esc(s.courseTitle) : 'скоро'}</span></div>`).join('')}</div><p class="small muted">Пока только история. Другие предметы появятся, когда допилим этот.</p>`;
+  $('hint').classList.remove('hidden');
+}
+$('subject-btn').onclick = openSubjects;
 $('picker-close').onclick = () => togglePicker(false);
 
 // ---------- экран босса главы: три уровня ----------

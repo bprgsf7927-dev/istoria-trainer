@@ -23,7 +23,7 @@ main { max-width: 720px; margin: 0 auto; padding: 8px 18px 40px; }
 h1, h2, .brand, .pill-title, .picker-head, .lesson-title, .result-title { font-family: Caveat, 'Marker Felt', cursive; font-weight: 700; }
 h1 { font-size: 38px; margin: 12px 0 4px; line-height: 1.05; }
 h2 { font-size: 30px; margin: 14px 0; line-height: 1.15; }
-.brand { font-size: 26px; }
+.brand { font-size: 23px; white-space: nowrap; }
 h2.chapter { font-size: 18px; color: var(--muted); margin: 28px 0 8px; }
 .muted { color: var(--muted); }
 .small { font-size: 14px; }
@@ -279,3 +279,14 @@ main { padding-bottom: 96px; }
 .donate-pic { display: flex; justify-content: center; line-height: 0; margin-bottom: 4px; }
 #pizza { cursor: pointer; }
 .hint-box a.btn { text-decoration: none; display: inline-block; }
+
+/* предмет */
+.brand-wrap { display: flex; align-items: center; gap: 6px; min-width: 0; }
+#subject-btn { cursor: pointer; background: none; white-space: nowrap; font-size: 15px; padding: 0 6px; }
+.top { gap: 8px; }
+.stats { font-size: 21px; gap: 8px; flex: none; }
+.subjects { display: grid; gap: 8px; margin: 8px 0; text-align: left; }
+.subject { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; border: 2.5px solid #b9bcb8; border-radius: 255px 15px 225px 15px / 15px 225px 15px 255px; padding: 6px 12px; color: var(--muted); }
+.subject.on { border-color: var(--ink); color: var(--ink); }
+.subject.active { border-color: var(--accent); background: var(--accent-soft); }
+.subject b { font-family: Caveat, cursive; font-size: 24px; }
