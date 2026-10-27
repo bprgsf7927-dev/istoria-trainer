@@ -68,7 +68,7 @@ manifest.webmanifest       — чтобы на телефоне добавлял
 
 ## Деплой
 
-GitHub Pages: любой пуш в `main` обновляет сайт через минуту. Адрес: https://bprgsf7927-dev.github.io/istoria-trainer/
+GitHub Pages: любой пуш в `main` обновляет сайт через минуту. Адрес: https://bprgsf7927-dev.github.io/ne-stydno/
 
 ## Авторство
 
