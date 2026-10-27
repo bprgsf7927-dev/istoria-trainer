@@ -1,6 +1,6 @@
 {
-  "name": "Истори-тренажер",
-  "short_name": "Уроки",
+  "name": "Не стыдно — уроки, которые не стыдно учить",
+  "short_name": "Не стыдно",
   "start_url": "./",
   "display": "standalone",
   "background_color": "#fbfbf8",
