@@ -254,3 +254,8 @@ body { background-image: repeating-linear-gradient(0deg, transparent 0 27px, #e9
 .map-info { align-self: center; flex: none; width: 26px; height: 26px; font-size: 18px; }
 .node-cap { min-height: 10px; font-size: 18px; }
 .node-row { min-height: 110px; }
+
+.book-side { position: absolute; top: 30px; right: 2%; background: none; border: 2.5px solid var(--ink); border-radius: 255px 15px 225px 15px / 15px 225px 15px 255px; padding: 6px 10px; display: flex; flex-direction: column; align-items: center; gap: 2px; cursor: pointer; transform: rotate(3deg); background: var(--card); }
+.book-side span { font-family: Caveat, cursive; font-size: 16px; font-weight: 700; }
+.node-row.c .mascot { right: auto; left: 4%; }
+.lead-tag { font-family: Caveat, cursive; font-size: 20px; color: var(--accent); margin: 4px 0 -8px; transform: rotate(-2deg); display: inline-block; }

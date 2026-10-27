@@ -76,7 +76,7 @@ const REPEATS = 3, PER_TEST = 16, MIN_TESTS = 3, MAX_TESTS = 8;
 function topicFactCount(tid) { return D.facts.filter(f => f.topic === tid).length + D.terms.filter(t => t.topic === tid).length + D.persons.filter(p => p.topic === tid).length; }
 function testsFor(tid) { return Math.max(MIN_TESTS, Math.min(MAX_TESTS, Math.round(topicFactCount(tid) * REPEATS / PER_TEST))); }
 function planFor(tid) {
-  const n = testsFor(tid), plan = ['intro'];
+  const n = testsFor(tid), plan = [];
   for (let i = 0; i < n; i++) { plan.push('step'); if (i === 1) plan.push('chest'); }
   plan.push('exam');
   return plan;
@@ -191,20 +191,24 @@ function renderHome() {
     b.className = `node ${kind}` + (open ? '' : ' locked') + (idx === currentIdx ? ' current' : '') + (best >= 70 ? ' done' : '');
     b.disabled = !open;
     let icon = 'star', label = '';
-    if (kind === 'intro') { icon = best >= 70 ? 'check' : 'book'; }
     if (kind === 'step') { stepNo++; icon = best >= 70 ? 'check' : 'star'; }
     if (kind === 'chest') { icon = 'chest'; label = prevTopic(tid) ? `${D.topicById[prevTopic(tid)].paragraph}` : '<span class="small muted">со следующего параграфа</span>'; }
     if (kind === 'exam') { icon = best >= 70 ? 'trophy' : 'exam'; }
     if (!open) icon = 'lock';
-    const col = !open ? '#9aa0a6' : best >= 70 ? '#3FA66A' : kind === 'chest' ? '#c48a00' : kind === 'exam' ? '#7c5cff' : kind === 'intro' ? '#1e2235' : '#1F3FBF';
-    b.innerHTML = `${wobble(col, open ? '#ffffff' : '#f0f0ec')}<span class="node-icon">${dood(icon, col)}</span>${best === 100 && kind !== 'intro' ? CROWN() : ''}`;
+    const col = !open ? '#9aa0a6' : best >= 70 ? '#3FA66A' : kind === 'chest' ? '#c48a00' : kind === 'exam' ? '#7c5cff' : '#1F3FBF';
+    b.innerHTML = `${wobble(col, open ? '#ffffff' : '#f0f0ec')}<span class="node-icon">${dood(icon, col)}</span>${best === 100 ? CROWN() : ''}`;
     if (idx > 0) { const path = document.createElement('div'); path.className = 'trail'; path.innerHTML = trailSVG(LANES[idx-1], LANES[idx]); row.appendChild(path); }
-    b.onclick = () => kind === 'intro' ? openCards(tid, idx) : kind === 'step' ? startStep(tid, idx) : kind === 'chest' ? startChest(tid) : startTopicExam(tid);
+    b.onclick = () => kind === 'step' ? startStep(tid, idx) : kind === 'chest' ? startChest(tid) : startTopicExam(tid);
     row.appendChild(b);
     const cap = document.createElement('div');
     cap.className = 'node-cap';
-    cap.innerHTML = `${label}${best && kind !== 'intro' ? `<span class="small muted">${best}%</span>` : ''}`;
+    cap.innerHTML = `${label}${best ? `<span class="small muted">${best}%</span>` : ''}`;
     row.appendChild(cap);
+    if (idx === 0) { // книжка-справочник сбоку от первого узла, без замка
+      const bk = document.createElement('button'); bk.className = 'book-side';
+      bk.innerHTML = `${dood('book', '#1e2235')}<span>весь параграф</span>`;
+      bk.onclick = () => openCards(tid, 0, false); row.appendChild(bk);
+    }
     if (idx === currentIdx) {
       const c = document.createElement('div'); c.className = 'mascot';
       const who = ['opti', 'nik', 'dushka'][idx % 3];
@@ -233,7 +237,7 @@ function renderTopicPicker() {
     for (const tid of ch.topics) {
       const t = D.topicById[tid];
       const [done, total] = topicProgress(tid);
-      const allPerfect = planFor(tid).every((k, i) => k === 'chest' || k === 'intro' || stepBest(tid, i) === 100);
+      const allPerfect = planFor(tid).every((k, i) => k === 'chest' || stepBest(tid, i) === 100);
       const b = document.createElement('button'); b.className = 'picker-item' + (tid === state.current ? ' active' : '') + (topicDone(tid) ? ' done' : '');
       const boxes = Array.from({ length: total }, (_, i) => `<span class="tick ${i < done ? 'on' : ''}"></span>`).join('');
       const who = ['opti', 'nik', 'dushka'][ch.topics.indexOf(tid) % 3];
@@ -372,12 +376,12 @@ function tCause(c) {
   const opts = shuffle([c.effect, ...c.wrong]);
   return choice(`${c.cause}. Что из этого следует?`, opts, c.effect, null, `${c.cause} → ${c.effect.toLowerCase()}`);
 }
-function choice(q, opts, answer, fact, answerText) {
+function choice(q, opts, answer, fact, answerText, lead = false) {
   let chosen = null;
   return {
-    kind: 'choice', fact, answerText: answerText || (fact ? `${fact.date} — ${fact.event}` : answer),
+    kind: lead ? 'lead' : 'choice', lead, fact, answerText: answerText || (fact ? `${fact.date} — ${fact.event}` : answer),
     render(el) {
-      el.innerHTML = `<h2>${esc(q)}</h2><div class="options">${opts.map(o => `<button class="opt">${esc(o)}</button>`).join('')}</div>`;
+      el.innerHTML = `${lead ? '<p class="lead-tag">первая встреча</p>' : ''}<h2>${esc(q)}</h2><div class="options">${opts.map(o => `<button class="opt">${esc(o)}</button>`).join('')}</div>`;
       el.querySelectorAll('.opt').forEach(b => b.onclick = () => {
         chosen = b.textContent;
         el.querySelectorAll('.opt').forEach(x => { x.disabled = true; if (x.textContent === answer) x.classList.add('correct'); });
@@ -520,6 +524,32 @@ function tType(fact) {
   };
 }
 
+// ---------- подводки: первая встреча с фактом, ответ почти очевиден из контекста ----------
+const SILLY = ['Это про футбол.', 'Это рецепт пирога.', 'Это название группы в телефоне.', 'Это марка машины.', 'Так называли домашнего кота.', 'Это погода на завтра.'];
+function leadKey(x) { return x.date !== undefined ? 'f' + x.id : x.term !== undefined ? 't' + x.id : 'p' + x.id; }
+function tLeadFact(f) { // дата + событие в контексте, пропуск — ключевое слово события
+  const words = f.event.split(' ').filter(w => w.length > 4 && /^[А-ЯЁ]/.test(w));
+  const key = words.length ? words[Math.floor(words.length / 2)] : null;
+  if (!key) return tLeadFactDate(f);
+  const text = f.event.replace(key, '____');
+  const wrong = pick(SILLY.map(s => s.split(' ')[1]).concat(['Колумб', 'Наполеон', 'Пушкин']), 1)[0];
+  return choice(`${f.date}: ${text}`, shuffle([key, wrong]), key, f, `${f.date} — ${f.event}`, true);
+}
+function tLeadFactDate(f) {
+  const d = String(f.date); const fake = /^\d{4}/.test(d) ? String(+d.slice(0, 4) + 300) : '2024';
+  return choice(`${f.event}. Когда?`, shuffle([d, fake]), d, f, `${f.date} — ${f.event}`, true);
+}
+function tLeadTerm(t) { // перефразируй своими словами
+  const opts = shuffle([t.definition, ...pick(SILLY, 2)]);
+  return choice(`${t.term}. Своими словами — это…`, opts, t.definition, null, `${t.term} — ${t.definition.toLowerCase()}`, true);
+}
+function tLeadPerson(p) {
+  const opts = shuffle([p.who, ...pick(SILLY, 2)]);
+  return choice(`${p.name}. Кто это, судя по всему?`, opts, p.who, null, `${p.name} — ${p.who.toLowerCase()}`, true);
+}
+function markMet(items) { state.met = state.met || {}; items.forEach(x => state.met[leadKey(x)] = 1); save(); }
+function unmet(pool) { const m = state.met || {}; return [...pool.facts, ...pool.terms, ...pool.persons].filter(x => !m[leadKey(x)]); }
+
 // ---------- сборка шага / сундука / контрольной / босса ----------
 function buildTasksFrom(pool, mech) {
   // pool: {facts, terms, persons, causes, cloze, tf} — массивы объектов; mech — список механик
@@ -559,7 +589,24 @@ function buildStep(tid, idx) {
   const lay = layoutFor(tid), p = topicPool(tid);
   const sub = (all, ids) => { const s = all.filter(x => ids.includes(x.id)); return s.length ? s : all; };
   const pool = { ...p, facts: sub(p.facts, lay.facts[k]), terms: sub(p.terms, lay.terms[k]), persons: sub(p.persons, lay.persons[k]) };
-  return buildTasksFrom(pool, STEP_MECH[k % STEP_MECH.length]);
+  // подводки: только в первых трех тренировках (5 → 3 → 2), из всего параграфа, каждый факт один раз;
+  // в первую очередь — факты этой тренировки, чтобы их спросили через одно задание
+  const cap = [5, 3, 2][k] || 0;
+  const freshAll = unmet(p), inStep = new Set([...pool.facts, ...pool.terms, ...pool.persons].map(leadKey));
+  const fresh = [...shuffle(freshAll.filter(x => inStep.has(leadKey(x)))), ...shuffle(freshAll.filter(x => !inStep.has(leadKey(x))))];
+  const chosen = fresh.slice(0, cap), nLead = chosen.length;
+  const leads = chosen.map(x => x.date !== undefined ? tLeadFact(x) : x.term !== undefined ? tLeadTerm(x) : tLeadPerson(x));
+  markMet(chosen);
+  const rest = buildTasksFrom(pool, STEP_MECH[k % STEP_MECH.length]).slice(0, LESSON_LEN - nLead);
+  // чередуем: подводка, задание, подводка, задание… чтобы спросили через одно
+  const out = []; let li = 0, ri = 0;
+  // подводки на четных местах, обычные на нечетных; если подводок больше половины — лишние в конец
+  while (out.length < LESSON_LEN && (li < leads.length || ri < rest.length)) {
+    if (li < leads.length && (out.length % 2 === 0 || ri >= rest.length)) out.push(leads[li++]);
+    else if (ri < rest.length) out.push(rest[ri++]);
+    else out.push(leads[li++]);
+  }
+  return out;
 }
 function buildChest(tid) {
   const pt = prevTopic(tid);
@@ -617,7 +664,7 @@ function startRun(kind, tasks, meta) {
   show('screen-task');
   renderTask();
 }
-function startStep(tid, idx) { openCards(tid, idx, true); }
+function startStep(tid, idx) { runStep(tid, idx); }
 function runStep(tid, idx) { const k = stepNoOf(tid, idx); startRun('step', buildStep(tid, idx), { tid, idx, intro: `${D.topicById[tid].paragraph}, ${['первая','вторая','третья','четвертая','пятая','шестая','седьмая','восьмая'][k] || (k + 1) + '-я'} тренировка. ${LESSON_LEN} заданий.` }); }
 function startChest(tid) {
   const pt = prevTopic(tid);
@@ -649,6 +696,13 @@ function finishTask(ok, half = false) {
   fb.classList.remove('hidden');
   fb.classList.add(ok ? 'ok' : half ? 'half' : 'bad');
   const hook = t.fact && t.fact.hook ? ` ${t.fact.hook}` : '';
+  if (t.lead) { // подводка: знакомство, без штрафов
+    run.score++; run.xp += XP_PER_TASK / 2;
+    speak('nerd', ok ? 'Запомни это.' : 'Вот так правильно. Через пару заданий спрошу.');
+    $('feedback-text').innerHTML = `<b>${ok ? 'Да.' : 'Вот так.'}</b> ${esc(t.answerText)}.`;
+    if (t.fact) { state.seen[t.fact.id] = Date.now(); if (t.fact.assoc && !ok) { $('assoc').textContent = `💡 ${t.fact.assoc}`; $('assoc').classList.remove('hidden'); } }
+    save(); return;
+  }
   if (ok) {
     run.score++; run.xp += XP_PER_TASK;
     speak('optimist');
@@ -687,14 +741,17 @@ function finishRun(lost) {
   state.xp += run.xp;
   let title, text, face = 'opti';
   const passed = pct >= 70;
+  let firstStep = false;
   if (run.kind === 'step' || run.kind === 'exam' || run.kind === 'chest') {
     const { tid, idx } = run.meta;
     const key = stepKey(tid, idx), prev = state.steps[key] || { best: 0, rounds: 0 };
-    state.steps[key] = { best: Math.max(prev.best, pct), rounds: prev.rounds + 1 };
+    firstStep = run.kind === 'step' && stepNoOf(tid, idx) === 0;
+    // первая тренировка параграфа — знакомство: открывает следующую при любом результате
+    state.steps[key] = { best: Math.max(prev.best, pct, firstStep ? 70 : 0), rounds: prev.rounds + 1, real: Math.max(prev.real || 0, pct) };
     const name = run.kind === 'step' ? 'Тренировка' : run.kind === 'exam' ? 'Контрольная' : 'Сундук';
     if (run.kind === 'chest' && passed && !prev.rewarded) { state.hearts = Math.min(3, state.hearts + 1); state.steps[key].rewarded = true; }
     else if (prev.rewarded) state.steps[key].rewarded = true;
-    title = pct === 100 ? 'Все верно. Корона твоя.' : passed ? `${pct}%. ${name} пройден${run.kind === 'exam' ? 'а' : ''}.` : `${pct}%. Нужно 70. Ошибки запомнил, спрошу их первыми.`;
+    title = pct === 100 ? 'Все верно. Корона твоя.' : passed ? `${pct}%. ${name} пройден${run.kind === 'exam' ? 'а' : ''}.` : firstStep ? `${pct}%. Ты только познакомился, дальше будет легче.` : `${pct}%. Нужно 70. Ошибки запомнил, спрошу их первыми.`;
     text = run.kind === 'chest' && passed ? `+1 сердце на босса (всего ${state.hearts})` : `${D.topicById[tid].paragraph} · ${D.topicById[tid].title}`;
     face = pct === 100 ? 'opti' : passed ? 'opti' : 'dushka';
   } else if (run.kind === 'boss') {
@@ -716,7 +773,7 @@ function finishRun(lost) {
   $('result-title').textContent = title;
   $('result-text').textContent = text;
   $('result-xp').textContent = run.xp ? `+${run.xp} XP` : '';
-  const failedStep = run.kind === 'step' && !passed;
+  const failedStep = run.kind === 'step' && !passed && !firstStep;
   $('cards-btn').classList.toggle('hidden', !failedStep);
   show('screen-result');
 }
@@ -735,7 +792,7 @@ const HINTS = {
   xp: ['Звезды', 'Опыт. 10 за каждое верное задание, 5 за «почти». Просто растут — это приятно.'],
   streak: ['Огонек', 'Дней подряд, когда ты заходил и проходил хотя бы один шаг. Пропустил день — сгорает.'],
   hearts: ['Сердца', 'Жизни на третьем уровне босса. Дает сундук: пройди тест по прошлому параграфу на 70%. Максимум три, после босса сгорают.'],
-  nodes: ['Что на карте', 'Книжка — знакомство с материалом, просто полистать. Звезда — тренировка на 8 заданий. Сундук — повторение прошлого параграфа, дает сердце. Лист — контрольная по параграфу, как спросит учитель. Пройдено от 70%, корона за 100%.'],
+  nodes: ['Что на карте', 'Звезда — тренировка на 8 заданий; в первых тренировках есть «первые встречи» — там нельзя ошибиться по-настоящему. Книжка сбоку — весь параграф карточками, на любой момент. Сундук — повторение прошлого параграфа, дает сердце. Лист — контрольная по параграфу, как спросит учитель. Первая тренировка параграфа открывает вторую при любом результате. Дальше пройдено от 70%, корона за 100%.'],
   crown: ['Корона', 'За 100% на тесте или контрольной. Любой тест можно пройти заново и добрать до короны. Собрал короны на всех тестах параграфа — корона в списке параграфов.'],
   daily: ['Микс дня', '5 заданий из того, в чем ты ошибался, и того, что давно не повторял. Собирается заново каждый день.'],
 };
