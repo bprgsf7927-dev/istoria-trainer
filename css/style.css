@@ -259,3 +259,6 @@ body { background-image: repeating-linear-gradient(0deg, transparent 0 27px, #e9
 .book-side span { font-family: Caveat, cursive; font-size: 16px; font-weight: 700; }
 .node-row.c .mascot { right: auto; left: 4%; }
 .lead-tag { font-family: Caveat, cursive; font-size: 20px; color: var(--accent); margin: 4px 0 -8px; transform: rotate(-2deg); display: inline-block; }
+
+.hint-tag { font-family: Caveat, cursive; font-size: 20px; color: var(--muted); margin: 4px 0 -8px; display: inline-block; transform: rotate(-2deg); }
+.hint-tag.strong { color: var(--accent); }

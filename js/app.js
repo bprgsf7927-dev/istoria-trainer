@@ -366,22 +366,25 @@ function tChoiceDate(fact, pool) {
 }
 function tChoiceTerm(term, pool) {
   const opts = shuffle([term.definition, ...pick(pool.filter(t => t.id !== term.id).map(t => t.definition), 3)]);
-  return choice(`${term.term} — это…`, opts, term.definition, null, `${term.term} — ${term.definition.toLowerCase()}`);
+  return choice(`${term.term} — это…`, opts, term.definition, null, `${term.term} — ${term.definition[0].toLowerCase() + term.definition.slice(1)}`);
 }
 function tChoicePerson(p, pool) {
   const opts = shuffle([p.who, ...pick(pool.filter(x => x.id !== p.id).map(x => x.who), 3)]);
-  return choice(`${p.name} — кто это?`, opts, p.who, null, `${p.name} — ${p.who.toLowerCase()}`);
+  return choice(`${p.name} — кто это?`, opts, p.who, null, `${p.name} — ${p.who[0].toLowerCase() + p.who.slice(1)}`);
 }
 function tCause(c) {
   const opts = shuffle([c.effect, ...c.wrong]);
-  return choice(`${c.cause}. Что из этого следует?`, opts, c.effect, null, `${c.cause} → ${c.effect.toLowerCase()}`);
+  return choice(`${c.cause}. Что из этого следует?`, opts, c.effect, null, `${c.cause} → ${c.effect[0].toLowerCase() + c.effect.slice(1)}`);
 }
 function choice(q, opts, answer, fact, answerText, lead = false) {
   let chosen = null;
   return {
     kind: lead ? 'lead' : 'choice', lead, fact, answerText: answerText || (fact ? `${fact.date} — ${fact.event}` : answer),
-    render(el) {
-      el.innerHTML = `${lead ? '<p class="lead-tag">первая встреча</p>' : ''}<h2>${esc(q)}</h2><div class="options">${opts.map(o => `<button class="opt">${esc(o)}</button>`).join('')}</div>`;
+    render(el, hint = 0) {
+      // подсказка: уровень 1 убирает один неверный вариант, уровень 2 оставляет два
+      let shown = opts;
+      if (hint > 0 && opts.length > 2) { const wrong = shuffle(opts.filter(o => o !== answer)); shown = shuffle([answer, ...wrong.slice(0, hint === 1 ? opts.length - 2 : 1)]); }
+      el.innerHTML = `${lead ? '<p class="lead-tag">первая встреча</p>' : ''}${hintTag(hint)}<h2>${esc(q)}</h2><div class="options">${shown.map(o => `<button class="opt">${esc(o)}</button>`).join('')}</div>`;
       el.querySelectorAll('.opt').forEach(b => b.onclick = () => {
         chosen = b.textContent;
         el.querySelectorAll('.opt').forEach(x => { x.disabled = true; if (x.textContent === answer) x.classList.add('correct'); });
@@ -392,7 +395,7 @@ function choice(q, opts, answer, fact, answerText, lead = false) {
   };
 }
 
-const PAIR_LIMIT = 5;
+const PAIR_LIMIT = 3;
 function tPairs(facts) {
   return pairsTask(pick(facts, Math.min(4, facts.length)).map(f => ({ id: f.id, l: f.date, r: f.event })), 'Соедини даты и события');
 }
@@ -403,26 +406,27 @@ function tPairsPersons(persons) {
   return pairsTask(pick(persons, 4).map(p => ({ id: p.id, l: p.name, r: p.who })), 'Кто есть кто: соедини');
 }
 function pairsTask(set, title) {
-  let left = null, mistakes = 0, done = 0;
   return {
     kind: 'pairs', answerText: set.map(x => `${x.l} — ${x.r}`).join('; '), quiet: true,
-    render(el) {
-      // одна сетка: левая и правая колонки идут строками, строки одной высоты
+    render(el, hint = 0) {
+      let left = null, mistakes = 0, done = 0;
+      const pre = new Set(hint === 1 ? [set[0].id] : hint >= 2 ? set.slice(0, set.length - 2).map(x => x.id) : []);
       const L = shuffle(set), R = shuffle(set);
-      el.innerHTML = `<h2>${esc(title)}</h2><p class="small muted">Ошибок можно сделать: ${PAIR_LIMIT}</p><div class="pairs">${
-        L.map((x, i) => `<button class="pair" data-id="${x.id}" data-side="l">${esc(x.l)}</button><button class="pair" data-id="${R[i].id}" data-side="r">${esc(R[i].r)}</button>`).join('')}</div>`;
+      el.innerHTML = `${hintTag(hint)}<h2>${esc(title)}</h2><div class="pairs">${
+        L.map((x, i) => `<button class="pair${pre.has(x.id) ? ' matched' : ''}" data-id="${x.id}" data-side="l">${esc(x.l)}</button><button class="pair${pre.has(R[i].id) ? ' matched' : ''}" data-id="${R[i].id}" data-side="r">${esc(R[i].r)}</button>`).join('')}</div>`;
+      done = pre.size;
       const all = () => el.querySelectorAll('.pair');
       all().forEach(b => b.onclick = () => {
         if (b.classList.contains('matched') || b.disabled) return;
         if (!left || left.dataset.side === b.dataset.side) { all().forEach(x => x.classList.remove('sel')); left = b; b.classList.add('sel'); return; }
         if (left.dataset.id === b.dataset.id) {
           [left, b].forEach(x => { x.classList.remove('sel'); x.classList.add('matched'); });
-          if (++done === set.length) finishTask(mistakes === 0, mistakes <= 1);
+          if (++done === set.length) finishTask(mistakes === 0);
         } else {
           mistakes++;
           [left, b].forEach(x => x.classList.add('shake'));
           setTimeout(() => all().forEach(x => x.classList.remove('shake', 'sel')), 400);
-          if (mistakes >= PAIR_LIMIT) { // провал задания: показываем пары и идем дальше
+          if (mistakes >= PAIR_LIMIT) { // показываем пары и идем дальше, задание не засчитано
             all().forEach(x => { x.disabled = true; x.classList.remove('sel'); if (!x.classList.contains('matched')) x.classList.add('reveal'); });
             finishTask(false);
           }
@@ -437,17 +441,18 @@ function tOrder(facts) {
   const uniq = []; const seen = new Set();
   for (const f of shuffle(facts)) { if (!seen.has(f.year)) { seen.add(f.year); uniq.push(f); } if (uniq.length === 4) break; }
   const sorted = [...uniq].sort((a, b) => a.year - b.year);
-  const chosen = [];
   return {
     kind: 'order', answerText: sorted.map(f => `${f.date} ${f.event}`).join(' → '),
-    render(el) {
-      el.innerHTML = `<h2>Расставь по порядку: от раннего к позднему</h2><div class="slots" id="slots">${sorted.map((_, i) => `<div class="slot">${i + 1}</div>`).join('')}</div>
-        <div class="options" id="order-opts">${shuffle(uniq).map(f => `<button class="opt" data-id="${f.id}">${esc(f.event)}</button>`).join('')}</div>`;
+    render(el, hint = 0) {
+      const preN = hint === 1 ? 1 : hint >= 2 ? Math.max(0, sorted.length - 2) : 0;
+      const chosen = sorted.slice(0, preN).map(f => f.id);
+      el.innerHTML = `${hintTag(hint)}<h2>Расставь по порядку: от раннего к позднему</h2><div class="slots" id="slots">${sorted.map((f, i) => i < preN ? `<div class="slot filled">${i + 1}. ${esc(f.event)}</div>` : `<div class="slot">${i + 1}</div>`).join('')}</div>
+        <div class="options" id="order-opts">${shuffle(uniq.filter(f => !chosen.includes(f.id))).map(f => `<button class="opt" data-id="${f.id}">${esc(f.event)}${hint >= 1 ? ` <span class="small muted">(${esc(String(f.date))})</span>` : ''}</button>`).join('')}</div>`;
       el.querySelectorAll('#order-opts .opt').forEach(b => b.onclick = () => {
         if (b.disabled) return;
         b.disabled = true; chosen.push(+b.dataset.id);
         const slot = el.querySelectorAll('.slot')[chosen.length - 1];
-        slot.textContent = `${chosen.length}. ${b.textContent}`; slot.classList.add('filled');
+        slot.textContent = `${chosen.length}. ${b.firstChild.textContent}`; slot.classList.add('filled');
         if (chosen.length === sorted.length) {
           const ok = chosen.every((id, i) => id === sorted[i].id);
           el.querySelectorAll('.slot').forEach((s, i) => s.classList.add(chosen[i] === sorted[i].id ? 'correct' : 'wrong'));
@@ -459,13 +464,13 @@ function tOrder(facts) {
 }
 
 function tCloze(c) {
-  const filled = [];
-  const words = shuffle([...c.answers, ...c.extra]);
   return {
     kind: 'cloze', answerText: c.text.replace(/\{(\d)\}/g, (_, i) => c.answers[+i]),
-    render(el) {
-      const html = c.text.replace(/\{(\d)\}/g, (_, i) => `<span class="blank" data-i="${i}">____</span>`);
-      el.innerHTML = `<h2>Вставь пропущенное</h2><p class="cloze">${html}</p><div class="chips">${words.map(w => `<button class="chip">${esc(w)}</button>`).join('')}</div>`;
+    render(el, hint = 0) {
+      const filled = [];
+      const words = shuffle(hint >= 1 ? [...c.answers] : [...c.answers, ...c.extra]);
+      const html = c.text.replace(/\{(\d)\}/g, (_, i) => `<span class="blank" data-i="${i}">${hint >= 2 ? esc(c.answers[+i][0]) + '___' : '____'}</span>`);
+      el.innerHTML = `${hintTag(hint)}<h2>Вставь пропущенное</h2><p class="cloze">${html}</p><div class="chips">${words.map(w => `<button class="chip">${esc(w)}</button>`).join('')}</div>`;
       const blanks = el.querySelectorAll('.blank');
       el.querySelectorAll('.chip').forEach(ch => ch.onclick = () => {
         if (ch.disabled || filled.length >= blanks.length) return;
@@ -479,7 +484,7 @@ function tCloze(c) {
       });
       blanks.forEach((b, i) => b.onclick = () => { // убрать слово назад
         if (filled.length !== i + 1 || b.classList.contains('correct') || b.classList.contains('wrong')) return;
-        const f = filled.pop(); f.chip.disabled = false; b.textContent = '____'; b.classList.remove('filled');
+        const f = filled.pop(); f.chip.disabled = false; b.textContent = hint >= 2 ? c.answers[i][0] + '___' : '____'; b.classList.remove('filled');
       });
     },
   };
@@ -488,8 +493,8 @@ function tCloze(c) {
 function tTrueFalse(s) {
   return {
     kind: 'tf', answerText: s.isTrue ? `Верно: ${s.statement}` : `Неверно. ${s.note}`,
-    render(el) {
-      el.innerHTML = `<h2>Правда или ложь?</h2><p class="statement">${esc(s.statement)}</p><div class="options tf"><button class="opt" data-v="1">Правда</button><button class="opt" data-v="0">Ложь</button></div>`;
+    render(el, hint = 0) {
+      el.innerHTML = `${hintTag(hint)}<h2>Правда или ложь?</h2><p class="statement">${esc(s.statement)}</p>${hint >= 2 ? `<p class="small muted">Подумай: ${esc(s.isTrue ? 'похоже на правду, если ничего не перепутано' : 'что-то здесь не сходится — дата, место или кто')}.</p>` : ''}<div class="options tf"><button class="opt" data-v="1">Правда</button><button class="opt" data-v="0">Ложь</button></div>`;
       el.querySelectorAll('.opt').forEach(b => b.onclick = () => {
         const v = b.dataset.v === '1';
         el.querySelectorAll('.opt').forEach(x => { x.disabled = true; if ((x.dataset.v === '1') === s.isTrue) x.classList.add('correct'); });
@@ -504,8 +509,11 @@ function tType(fact) {
   const period = /[—-]/.test(fact.date) && !/^ок/.test(fact.date);
   return {
     kind: 'type', fact, answerText: `${fact.date} — ${fact.event}`,
-    render(el) {
-      el.innerHTML = `<h2>${period ? 'В каком году началось' : 'В каком году'}: ${esc(fact.event)}?</h2>
+    render(el, hint = 0) {
+      const y = String(fact.year);
+      const mask = y.split('').map((ch, i) => (i === 1 || i === y.length - 1) ? '_' : ch).join('');
+      const h = hint === 1 ? `<p class="small muted">Подсказка: ${fact.century}-й век, то есть ${y[0]}${y.length === 4 ? y[1] : ''}__.</p>` : hint >= 2 ? `<p class="small muted">Подсказка: ${esc(mask)}</p>` : '';
+      el.innerHTML = `${hintTag(hint)}<h2>${period ? 'В каком году началось' : 'В каком году'}: ${esc(fact.event)}?</h2>${h}
         <input class="year" id="year-input" type="number" inputmode="numeric" placeholder="год" min="100" max="1600">`;
       const inp = el.querySelector('#year-input');
       inp.focus();
@@ -524,6 +532,8 @@ function tType(fact) {
   };
 }
 
+const hintTag = (h) => h === 1 ? '<p class="hint-tag">еще раз, ты справишься</p>' : h >= 2 ? '<p class="hint-tag strong">с подсказкой</p>' : '';
+
 // ---------- подводки: первая встреча с фактом, ответ почти очевиден из контекста ----------
 const SILLY = ['Это про футбол.', 'Это рецепт пирога.', 'Это название группы в телефоне.', 'Это марка машины.', 'Так называли домашнего кота.', 'Это погода на завтра.'];
 function leadKey(x) { return x.date !== undefined ? 'f' + x.id : x.term !== undefined ? 't' + x.id : 'p' + x.id; }
@@ -541,11 +551,11 @@ function tLeadFactDate(f) {
 }
 function tLeadTerm(t) { // перефразируй своими словами
   const opts = shuffle([t.definition, ...pick(SILLY, 2)]);
-  return choice(`${t.term}. Своими словами — это…`, opts, t.definition, null, `${t.term} — ${t.definition.toLowerCase()}`, true);
+  return choice(`${t.term}. Своими словами — это…`, opts, t.definition, null, `${t.term} — ${t.definition[0].toLowerCase() + t.definition.slice(1)}`, true);
 }
 function tLeadPerson(p) {
   const opts = shuffle([p.who, ...pick(SILLY, 2)]);
-  return choice(`${p.name}. Кто это, судя по всему?`, opts, p.who, null, `${p.name} — ${p.who.toLowerCase()}`, true);
+  return choice(`${p.name}. Кто это, судя по всему?`, opts, p.who, null, `${p.name} — ${p.who[0].toLowerCase() + p.who.slice(1)}`, true);
 }
 function markMet(items) { state.met = state.met || {}; items.forEach(x => state.met[leadKey(x)] = 1); save(); }
 function unmet(pool) { const m = state.met || {}; return [...pool.facts, ...pool.terms, ...pool.persons].filter(x => !m[leadKey(x)]); }
@@ -657,7 +667,9 @@ function buildDaily() {
 // ---------- прогон раунда ----------
 let run = null;
 function startRun(kind, tasks, meta) {
-  run = { kind, tasks, i: 0, score: 0, hearts: kind === 'boss' && meta.level === 3 ? Math.max(1, state.hearts) : null, meta, xp: 0 };
+  // tasks — основной круг; wrong — задания на доработку; round — номер круга (0 основной); hint — уровень подсказки в круге
+  run = { kind, tasks, i: 0, score: 0, hearts: kind === 'boss' && meta.level === 3 ? Math.max(1, state.hearts) : null, meta, xp: 0,
+          firstPass: null, wrong: [], round: 0, hint: 0, redo: kind === 'step' || kind === 'exam' || kind === 'chest' };
   touchStreak(); renderStats();
   $('hearts').classList.toggle('hidden', run.hearts === null);
   speak('neutral', meta.intro || '');
@@ -687,7 +699,7 @@ function renderTask() {
   ['feedback', 'assoc', 'more-btn', 'more-text', 'check-btn'].forEach(id => $(id).classList.add('hidden'));
   $('feedback').classList.remove('ok', 'bad', 'half');
   const el = $('task'); el.innerHTML = '';
-  t.render(el);
+  t.render(el, run.round > 0 ? run.hint : 0);
 }
 
 function finishTask(ok, half = false) {
@@ -703,9 +715,10 @@ function finishTask(ok, half = false) {
     if (t.fact) { state.seen[t.fact.id] = Date.now(); if (t.fact.assoc && !ok) { $('assoc').textContent = `💡 ${t.fact.assoc}`; $('assoc').classList.remove('hidden'); } }
     save(); return;
   }
+  if (!ok && run.redo && !t.lead) run.wrong.push(t);
   if (ok) {
     run.score++; run.xp += XP_PER_TASK;
-    speak('optimist');
+    speak(run.round > 0 ? 'nerd' : 'optimist');
     $('feedback-text').innerHTML = t.quiet ? '<b>Ты прав.</b> Все пары на месте.' : `<b>Ты прав.</b> ${esc(t.answerText)}.${esc(hook)}`;
     if (t.fact) state.wrong = state.wrong.filter(id => id !== t.fact.id);
   } else {
@@ -713,7 +726,7 @@ function finishTask(ok, half = false) {
       run.score += 0.5; run.xp += XP_PER_TASK / 2; speak('nerd', 'Одна промашка — засчитываю половину.');
       $('feedback-text').innerHTML = t.quiet ? '<b>Почти.</b> Собрал, но с одной ошибкой.' : `<b>Почти.</b> Правильно: ${esc(t.answerText)}.`;
     } else {
-      speak('panic');
+      speak(run.round > 0 ? 'nerd' : 'panic', run.round > 0 ? 'Ничего, вернемся к этому.' : '');
       $('feedback-text').innerHTML = `<b>Ты не прав.</b> Правильно: ${esc(t.answerText)}.`;
     }
     if (t.fact) {
@@ -731,27 +744,39 @@ $('more-btn').onclick = () => { $('more-text').classList.remove('hidden'); $('mo
 function next() {
   if (run.hearts === 0) return finishRun(true);
   run.i++;
-  if (run.i >= run.tasks.length) return finishRun(false);
+  if (run.i >= run.tasks.length) {
+    if (run.round === 0) run.firstPass = Math.round(run.score / run.tasks.length * 100);
+    if (run.redo && run.wrong.length) { // круг доработки: те же задания, с подсказкой
+      run.round++; run.hint = Math.min(2, run.round);
+      run.tasks = run.wrong; run.wrong = []; run.i = 0;
+      speak('dushka' in CHARS ? 'nerd' : 'nerd', run.round === 1 ? `Разберем, что не далось: ${run.tasks.length}.` : `Еще ${run.tasks.length}, теперь с подсказкой.`);
+      $('progress-bar').style.width = '0%';
+      renderTask(); return;
+    }
+    return finishRun(false);
+  }
   renderTask();
 }
 
 function finishRun(lost) {
   $('progress-bar').style.width = '100%';
-  const n = run.tasks.length, s = run.score, pct = Math.round(s / n * 100);
+  const n = run.tasks.length, s = run.score;
+  const pct = run.redo ? (run.firstPass ?? Math.round(s / n * 100)) : Math.round(s / n * 100);
   state.xp += run.xp;
   let title, text, face = 'opti';
-  const passed = pct >= 70;
+  const passed = run.redo ? !lost : pct >= 70; // для тренировок: закрыта, если дошел до конца доработки
   let firstStep = false;
   if (run.kind === 'step' || run.kind === 'exam' || run.kind === 'chest') {
     const { tid, idx } = run.meta;
     const key = stepKey(tid, idx), prev = state.steps[key] || { best: 0, rounds: 0 };
     firstStep = run.kind === 'step' && stepNoOf(tid, idx) === 0;
-    // первая тренировка параграфа — знакомство: открывает следующую при любом результате
-    state.steps[key] = { best: Math.max(prev.best, pct, firstStep ? 70 : 0), rounds: prev.rounds + 1, real: Math.max(prev.real || 0, pct) };
+    // best: 100 = закрыта с первого прохода (корона); 70..99 = закрыта через доработку, число = результат первого прохода
+    const closed = Math.max(70, pct);
+    state.steps[key] = { best: Math.max(prev.best, closed), rounds: prev.rounds + 1, first: Math.max(prev.first || 0, pct) };
     const name = run.kind === 'step' ? 'Тренировка' : run.kind === 'exam' ? 'Контрольная' : 'Сундук';
     if (run.kind === 'chest' && passed && !prev.rewarded) { state.hearts = Math.min(3, state.hearts + 1); state.steps[key].rewarded = true; }
     else if (prev.rewarded) state.steps[key].rewarded = true;
-    title = pct === 100 ? 'Все верно. Корона твоя.' : passed ? `${pct}%. ${name} пройден${run.kind === 'exam' ? 'а' : ''}.` : firstStep ? `${pct}%. Ты только познакомился, дальше будет легче.` : `${pct}%. Нужно 70. Ошибки запомнил, спрошу их первыми.`;
+    title = pct === 100 ? 'Все верно с первого раза. Корона твоя.' : run.round > 0 ? `Добил до конца. С первого раза было ${pct}%.` : `${pct}%. ${name} закрыт${run.kind === 'exam' ? 'а' : ''}.`;
     text = run.kind === 'chest' && passed ? `+1 сердце на босса (всего ${state.hearts})` : `${D.topicById[tid].paragraph} · ${D.topicById[tid].title}`;
     face = pct === 100 ? 'opti' : passed ? 'opti' : 'dushka';
   } else if (run.kind === 'boss') {
@@ -773,7 +798,7 @@ function finishRun(lost) {
   $('result-title').textContent = title;
   $('result-text').textContent = text;
   $('result-xp').textContent = run.xp ? `+${run.xp} XP` : '';
-  const failedStep = run.kind === 'step' && !passed && !firstStep;
+  const failedStep = run.kind === 'step' && pct < 70 && !firstStep;
   $('cards-btn').classList.toggle('hidden', !failedStep);
   show('screen-result');
 }
@@ -792,8 +817,8 @@ const HINTS = {
   xp: ['Звезды', 'Опыт. 10 за каждое верное задание, 5 за «почти». Просто растут — это приятно.'],
   streak: ['Огонек', 'Дней подряд, когда ты заходил и проходил хотя бы один шаг. Пропустил день — сгорает.'],
   hearts: ['Сердца', 'Жизни на третьем уровне босса. Дает сундук: пройди тест по прошлому параграфу на 70%. Максимум три, после босса сгорают.'],
-  nodes: ['Что на карте', 'Звезда — тренировка на 8 заданий; в первых тренировках есть «первые встречи» — там нельзя ошибиться по-настоящему. Книжка сбоку — весь параграф карточками, на любой момент. Сундук — повторение прошлого параграфа, дает сердце. Лист — контрольная по параграфу, как спросит учитель. Первая тренировка параграфа открывает вторую при любом результате. Дальше пройдено от 70%, корона за 100%.'],
-  crown: ['Корона', 'За 100% на тесте или контрольной. Любой тест можно пройти заново и добрать до короны. Собрал короны на всех тестах параграфа — корона в списке параграфов.'],
+  nodes: ['Что на карте', 'Звезда — тренировка на 8 заданий; в первых тренировках есть «первые встречи» — там нельзя ошибиться по-настоящему. Книжка сбоку — весь параграф карточками, на любой момент. Сундук — повторение прошлого параграфа, дает сердце. Лист — контрольная по параграфу, как спросит учитель. Тренировка не отпускает, пока не ответишь на все: ошибки возвращаются, сначала просто еще раз, потом с подсказкой. Корона — если все верно с первого раза.'],
+  crown: ['Корона', 'За тренировку или контрольную без единой ошибки с первого раза. Любую можно переиграть и добрать до короны. Короны на всех тренировках параграфа — корона в списке.'],
   daily: ['Микс дня', '5 заданий из того, в чем ты ошибался, и того, что давно не повторял. Собирается заново каждый день.'],
 };
 function showHint(k) { const [t, body] = HINTS[k]; $('hint-title').textContent = t; $('hint-text').textContent = body; $('hint').classList.remove('hidden'); }
